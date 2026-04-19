@@ -51,7 +51,7 @@ function auth(req, res, next) {
 }
 
 // Products
-app.get('/api/products', auth, async (req, res) => {
+app.get('/api/products', async (req, res) => {
   const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
   if (error) { console.error('Supabase error:', error); return res.status(500).json({ error: error.message }); }
   res.json(data || []);
