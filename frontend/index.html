@@ -684,6 +684,7 @@ section, header, footer, main {
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <!-- Hidden brand logos for JS reference -->
@@ -1070,23 +1071,22 @@ section, header, footer, main {
 </div>
 
 <script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+let products = [];
 const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let products = []; 
-async function loadProducts(){ 
-  try{ 
-    const { data, error } = await supa.from('products').select('*').order('created_at', { ascending: false });
+async function loadProducts(){
+  try{
+    const { data, error } = await supa.from('products').select('*').order('created_at', {ascending:false});
     if(error) throw error;
-    products = data || []; 
-  }catch(e){ 
+    products = data || [];
+    console.log('Loaded products:', products.length);
+  }catch(e){
     console.error('Load products error:', e);
-    products=[]; 
-  } 
-  renderProducts("all"); 
+    products=[];
+  }
+  renderProducts("all");
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
@@ -1479,7 +1479,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const cart=(typeof window.cart!=='undefined'&&window.cart.length?window.cart:JSON.parse(localStorage.getItem('simracer_cart')||'[]'));
     if(cart.length===0){alert('Giỏ hàng trống');return;}
     const order={customerName:name,phone,address,note,items:cart,total:cart.reduce((s,i)=>s+i.price*(i.quantity||i.qty||1),0)};
-    try{const { error } = await supa.from('orders').insert([{ customer_name: name, phone, address, note, items: cart, total: order.total, status: 'new' }]); if(error) throw error;
+    try{const { error } = await supa.from('orders').insert([{ customer_name: name, phone, address, note, items: cart, total: order.total, status: 'new', created_at: new Date().toISOString() }]); if(error) throw error;
       alert('Đặt hàng thành công!');localStorage.removeItem('simracer_cart');closeCheckout();location.reload();
     }catch(err){alert('Lỗi: '+err.message);}
   });}
