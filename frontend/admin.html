@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - SimRacer VN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{background:#0a0a0a;color:#e4e4e7;font-family:Inter,sans-serif}input,select,textarea{background:#0a0a0a!important;border:1px solid #27272a;color:#e4e4e7}</style>
+</head>
+<body>
+<div id="login" class="min-h-screen flex items-center justify-center">
+  <div class="bg-[#141414] p-8 rounded-2xl border border-zinc-800 w-[360px]">
+    <h1 class="text-xl font-semibold text-center mb-6">SIMRACER ADMIN</h1>
+    <input id="u" value="admin" class="w-full h-11 px-3 rounded-xl mb-3" placeholder="user">
+    <input id="p" type="password" value="147258" class="w-full h-11 px-3 rounded-xl mb-4" placeholder="pass">
+    <button onclick="login()" class="w-full h-11 bg-orange-600 rounded-xl font-medium">Đăng nhập</button>
+    <p id="err" class="text-red-400 text-sm mt-2 hidden"></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header class="sticky top-0 bg-[#0a0a0a]/80 backdrop-blur border-b border-zinc-900 p-4 flex justify-between">
+    <h1 class="font-semibold">Quản lý SimRacer</h1>
+    <button onclick="logout()" class="text-sm px-3 py-1 bg-zinc-800 rounded-lg">Đăng xuất</button>
+  </header>
+  <div class="max-w-6xl mx-auto p-4">
+    <div class="flex gap-2 mb-4">
+      <button onclick="showTab('products')" id="tab-products" class="px-4 py-2 bg-orange-600 rounded-lg text-sm">Sản phẩm</button>
+      <button onclick="showTab('orders')" id="tab-orders" class="px-4 py-2 bg-zinc-800 rounded-lg text-sm">Đơn hàng</button>
+      <button onclick="showTab('stats')" id="tab-stats" class="px-4 py-2 bg-zinc-800 rounded-lg text-sm">Thống kê</button>
+    </div>
+
+    <div id="products" class="grid md:grid-cols-2 gap-4">
+      <div class="bg-[#141414] p-4 rounded-xl border border-zinc-900">
+        <h2 class="font-medium mb-3">Thêm sản phẩm</h2>
+        <input id="name" placeholder="Tên SP" class="w-full mb-2 p-2 rounded-lg">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <input id="brand" placeholder="Brand" class="p-2 rounded-lg">
+          <input id="price" type="number" placeholder="Giá" class="p-2 rounded-lg">
+        </div>
+        <input id="image" placeholder="URL ảnh" class="w-full mb-2 p-2 rounded-lg">
+        <button onclick="saveProduct()" class="w-full bg-orange-600 py-2 rounded-lg">Lưu</button>
+      </div>
+      <div class="bg-[#141414] p-4 rounded-xl border border-zinc-900">
+        <h2 class="font-medium mb-3">Danh sách (<span id="pcount">0</span>)</h2>
+        <div id="plist" class="space-y-2 max-h-[400px] overflow-auto"></div>
+      </div>
+    </div>
+
+    <div id="orders" class="hidden bg-[#141414] p-4 rounded-xl border border-zinc-900">
+      <div class="flex justify-between mb-3"><h2 class="font-medium">Đơn hàng</h2><button onclick="loadOrders()" class="text-sm px-3 py-1 bg-zinc-800 rounded">Tải lại</button></div>
+      <div id="olist" class="space-y-3"></div>
+    </div>
+
+    <div id="stats" class="hidden bg-[#141414] p-4 rounded-xl border border-zinc-900">
+      <h2 class="font-medium mb-3">Thống kê</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="sbox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let token = localStorage.getItem('sr_token');
+if(token) {document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');init();}
+async function login(){
+  const u=document.getElementById('u').value, p=document.getElementById('p').value;
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json(); if(!r.ok) throw new Error(d.error||'Fail');
+    token=d.token; localStorage.setItem('sr_token',token);
+    document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');init();
+  }catch(e){document.getElementById('err').textContent=e.message;document.getElementById('err').classList.remove('hidden')}
+}
+function logout(){localStorage.removeItem('sr_token');location.reload()}
+function showTab(t){['products','orders','stats'].forEach(x=>{document.getElementById(x).classList.toggle('hidden',x!==t);document.getElementById('tab-'+x).classList.toggle('bg-orange-600',x===t);document.getElementById('tab-'+x).classList.toggle('bg-zinc-800',x!==t)}); if(t==='orders')loadOrders(); if(t==='stats')loadStats();}
+async function api(path,opt={}){opt.headers={...opt.headers,Authorization:'Bearer '+token}; const r=await fetch(path,opt); if(r.status===401){logout();throw new Error('Hết phiên')}; return r.json()}
+async function init(){loadProducts()}
+async function loadProducts(){const data=await fetch('/api/products').then(r=>r.json()); document.getElementById('pcount').textContent=data.length; document.getElementById('plist').innerHTML=data.map(p=>`<div class="flex gap-3 p-2 bg-[#0a0a0a] rounded-lg"><img src="${p.image||''}" class="w-12 h-12 object-cover rounded bg-zinc-800"><div class="flex-1"><div class="text-sm">${p.name}</div><div class="text-xs text-zinc-500">${(p.price||0).toLocaleString()}₫</div></div><button onclick="delP('${p.id}')" class="text-zinc-500">×</button></div>`).join('')}
+async function saveProduct(){const b={name:name.value,brand:brand.value,price:+price.value,image:image.value}; await api('/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); name.value='';loadProducts()}
+async function delP(id){if(!confirm('Xóa?'))return; await api('/api/products/'+id,{method:'DELETE'}); loadProducts()}
+async function loadOrders(){const data=await api('/api/orders'); document.getElementById('olist').innerHTML=data.length?data.map(o=>`<div class="p-3 bg-[#0a0a0a] rounded-lg"><div class="flex justify-between"><b>${o.customer_name}</b><span class="text-xs text-zinc-500">${new Date(o.created_at).toLocaleString('vi-VN')}</span></div><div class="text-sm text-zinc-400">${o.phone} • ${o.address||''}</div><div class="text-sm mt1">${(o.items||[]).map(i=>`${i.name} x${i.qty}`).join(', ')}</div><div class="text-orange-400 font-medium mt1">${(o.total||0).toLocaleString()}₫</div></div>`).join(''):'<div class="text-zinc-500 text-center py8">Chưa có đơn</div>'}
+async function loadStats(){const s=await api('/api/stats'); document.getElementById('sbox').innerHTML=`<div class="p3 bg-[#0a0a0a] rounded"><div class="text-xs text-zinc-500">Tổng đơn</div><div class="text-xl">${s.totalOrders}</div></div><div class="p3 bg-[#0a0a0a] rounded"><div class="text-xs text-zinc-500">Doanh thu</div><div class="text-xl">${(s.revenue||0).toLocaleString()}₫</div></div><div class="p3 bg-[#0a0a0a] rounded"><div class="text-xs text-zinc-500">Hôm nay</div><div class="text-xl">${s.todayOrders}</div></div><div class="p3 bg-[#0a0a0a] rounded"><div class="text-xs text-zinc-500">HNay</div><div class="text-xl">${(s.todayRevenue||0).toLocaleString()}₫</div></div>`}
+</script>
+</body></html>
