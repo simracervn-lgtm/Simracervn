@@ -1070,7 +1070,24 @@ section, header, footer, main {
 </div>
 
 <script>
-let products = []; async function loadProducts(){ try{ const r=await fetch("/api/products"); products=await r.json(); }catch(e){ products=[]; } renderProducts("all"); }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let products = []; 
+async function loadProducts(){ 
+  try{ 
+    const { data, error } = await supa.from('products').select('*').order('created_at', { ascending: false });
+    if(error) throw error;
+    products = data || []; 
+  }catch(e){ 
+    console.error('Load products error:', e);
+    products=[]; 
+  } 
+  renderProducts("all"); 
+}
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
 let currentFilter = 'all';
@@ -1462,7 +1479,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const cart=(typeof window.cart!=='undefined'&&window.cart.length?window.cart:JSON.parse(localStorage.getItem('simracer_cart')||'[]'));
     if(cart.length===0){alert('Giỏ hàng trống');return;}
     const order={customerName:name,phone,address,note,items:cart,total:cart.reduce((s,i)=>s+i.price*(i.quantity||i.qty||1),0)};
-    try{const r=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)});const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'Lỗi server');
+    try{const { error } = await supa.from('orders').insert([{ customer_name: name, phone, address, note, items: cart, total: order.total, status: 'new' }]); if(error) throw error;
       alert('Đặt hàng thành công!');localStorage.removeItem('simracer_cart');closeCheckout();location.reload();
     }catch(err){alert('Lỗi: '+err.message);}
   });}
