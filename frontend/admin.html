@@ -249,8 +249,6 @@ async function login() {
     localStorage.setItem(tokenKey, token);
     showApp(true);
     loadProducts();
-    loadOrders();
-    setInterval(()=>{ const oc=document.getElementById('tab-orders-content'); if(oc && !oc.classList.contains('hidden')) loadOrders(); },15000);
   } catch (err) {
     alert('Lỗi đăng nhập: ' + err.message);
   } finally {
@@ -477,8 +475,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (token) {
     showApp(true);
     loadProducts();
-    loadOrders();
-    setInterval(()=>{ const oc=document.getElementById('tab-orders-content'); if(oc && !oc.classList.contains('hidden')) loadOrders(); },15000);
   } else {
     showApp(false);
   }
@@ -538,34 +534,64 @@ function switchTab(tab){
   if(tab==='orders') loadOrders();
   if(tab==='stats') loadStats();
 }
+let lastOrderCount = 0;
 async function loadOrders(){
   try{
     const token = localStorage.getItem('token');
     const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
-    if(!res.ok){ throw new Error('HTTP '+res.status) }
+    if(!res.ok) throw new Error('HTTP '+res.status);
     const orders = await res.json();
-    const badge = document.getElementById('orders-badge');
-    if(badge){ if(orders && orders.length>0){ badge.textContent=orders.length; badge.classList.remove('hidden') } else { badge.classList.add('hidden') } }
     const el = document.getElementById('orders-list');
-    if(!orders.length){el.innerHTML='<div class="text-center py-20 text-zinc-600">Chưa có đơn hàng</div>';return}
+    const badge = document.getElementById('orders-badge');
+    if(badge){
+      badge.textContent = orders.length;
+      badge.classList.toggle('hidden', orders.length===0);
+    }
+    // Play sound if new order
+    if(orders.length > lastOrderCount && lastOrderCount > 0){
+      try{ document.getElementById('order-sound')?.play(); }catch{}
+    }
+    lastOrderCount = orders.length;
+    
+    if(!orders.length){
+      el.innerHTML='<div class="text-center py-20 text-zinc-600">Chưa có đơn hàng</div>';
+      return;
+    }
     el.innerHTML = orders.map(o=>`
-      <div class="p-4 bg-[#0a0a0a] border border-zinc-800 rounded-xl">
+      <div class="p-4 bg-[#0a0a0a] border border-zinc-800 rounded-xl hover:border-zinc-700 transition">
         <div class="flex justify-between items-start mb-2">
-          <div><div class="font-medium text-[14px]">${o.customer_name}</div><div class="text-[12px] text-zinc-500">${o.phone}</div></div>
+          <div><div class="font-medium text-[14px]">${o.customer_name||'Khách'}</div><div class="text-[12px] text-zinc-500">${o.phone||''}</div></div>
           <div class="text-right"><div class="text-[12px] text-zinc-500">${new Date(o.created_at).toLocaleString('vi-VN')}</div><div class="text-[13px] font-semibold text-orange-400 mt-1">${(o.total||0).toLocaleString('vi-VN')}₫</div></div>
         </div>
-        <div class="text-[12px] text-zinc-400 mb2">${o.address||''}</div>
-        <div class="text-[12px]">${(o.items||[]).map(i=>`${i.name||i.id} x${i.qty||1}`).join(', ')}</div>
-        ${o.note?`<div class="text-[11px] text-zinc-500 mt-1 italic">Ghi chú: ${o.note}</div>`:''}
+        <div class="text-[12px] text-zinc-400 mb-1">${o.address||''}</div>
+        <div class="text-[12px] text-zinc-300">${(o.items||[]).map(i=>`${i.name||i.id} x${i.qty||1}`).join(', ')}</div>
+        ${o.note?`<div class="text-[11px] text-zinc-500 mt-1.5 italic border-l-2 border-zinc-800 pl-2">Ghi chú: ${o.note}</div>`:''}
       </div>
     `).join('');
-  }catch(e){console.error(e)}
+  }catch(e){
+    console.error(e);
+    document.getElementById('orders-list').innerHTML = '<div class="text-center py-20 text-red-400">Lỗi tải đơn hàng</div>';
+  }
 }
 async function loadStats(){
   try{
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/stats',{headers:{'Authorization':'Bearer '+token}});
-    const s = await res.json();
+    let s = {};
+    try{
+      const res = await fetch('/api/stats',{headers:{'Authorization':'Bearer '+token}});
+      if(res.ok) s = await res.json();
+    }catch{}
+    // Fallback: calculate from orders
+    if(!s.totalOrders){
+      const res2 = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
+      const orders = await res2.json();
+      const today = new Date().toDateString();
+      const todayOrders = orders.filter(o=>new Date(o.created_at).toDateString()===today);
+      s.totalOrders = orders.length;
+      s.revenue = orders.reduce((a,b)=>a+(b.total||0),0);
+      s.todayOrders = todayOrders.length;
+      s.todayRevenue = todayOrders.reduce((a,b)=>a+(b.total||0),0);
+    }
     document.getElementById('stat-orders').textContent = s.totalOrders||0;
     document.getElementById('stat-revenue').textContent = (s.revenue||0).toLocaleString('vi-VN')+'₫';
     document.getElementById('stat-today-orders').textContent = s.todayOrders||0;
@@ -583,7 +609,7 @@ login = async function(){
     localStorage.setItem('token', data.token);
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-screen').classList.remove('hidden');
-    if(typeof loadProducts==='function') loadProducts();
+    if(typeof loadProducts==='function') loadProducts(); loadOrders(); setInterval(()=>{ if(!document.getElementById('tab-orders-content').classList.contains('hidden')) loadOrders(); }, 15000);
   }catch(e){alert('Sai tài khoản')}
 }
 </script>
@@ -609,5 +635,6 @@ login = async function(){
   </div>
 </div>
 
+<audio id="order-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 </body>
 </html>
