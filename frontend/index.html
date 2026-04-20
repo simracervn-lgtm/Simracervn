@@ -425,11 +425,11 @@ html {
 </style>
 
 <style id="lang-switcher-css">
-.lang-switcher { display: flex; gap: 0.5rem; align-items: center; margin-left: 1.5rem; }
-.lang-btn { padding: 0.4rem 0.9rem; border: 1px solid #ff3d00; border-radius: 0.5rem; background: transparent; color: #ff3d00; cursor: pointer; font-size: 0.875rem; transition: all 0.2s; font-weight: 700; }
+.lang-switcher { display: flex; gap: 0.35rem; align-items: center; }
+.lang-btn { padding: 0.25rem 0.6rem; border: 1px solid #ff3d00; border-radius: 0.4rem; background: transparent; color: #ff3d00; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; font-weight: 600; line-height: 1; }
 .lang-btn.active, .lang-btn:hover { background: linear-gradient(135deg, #ff3d00, #ff6e00); color: #000; }
 @media (max-width: 1024px) {
-  .lang-switcher { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; background: #111119; padding: 0.75rem; border-radius: 0.75rem; box-shadow: 0 4px 20px rgba(255,61,0,0.4); border: 1px solid rgba(255,61,0,0.3); }
+  .lang-switcher { position: static; background: transparent; padding: 0; box-shadow: none; border: none; margin-left: 0; }
 }
 </style>
 <script id="lang-switcher-js">
@@ -1056,7 +1056,7 @@ section, header, footer, main {
 
     <div class="border-t border-gray-900 p-6 space-y-4">
         <div class="flex items-center justify-between text-xl font-bold">
-            <span data-i18n="cart.total">Tổng cộng</span>:
+            <span data-i18n="cart.total">Tổng cộng</span>
             <span class="gradient-text" id="cart-total">0₫
         </div>
         <button onclick="openCheckout()" class="facebook-btn w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2" data-i18n="cart.checkout"><i class="fa-solid fa-comments"></i> Thanh Toán</button>
@@ -1276,7 +1276,7 @@ function addToCart(id) {
     // Show notification
     const notification = document.createElement('div');
     notification.className = 'fixed top-24 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-[100] fade-in-up';
-    notification.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i>Đã thêm vào giỏ hàng!`;
+    notification.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i>${Intl.t('notif.added')}!`;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 2000);
 }
