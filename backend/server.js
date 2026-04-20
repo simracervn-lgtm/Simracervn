@@ -1,54 +1,29 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+const express=require('express');
+const cors=require('cors');
+const path=require('path');
+const multer=require('multer');
 require('dotenv').config();
-let createClient=null; try{createClient=require('@supabase/supabase-js').createClient}catch{}
+let createClient=null;try{createClient=require('@supabase/supabase-js').createClient}catch{}
+const cloudinary=require('cloudinary').v2;
+cloudinary.config({cloud_name:process.env.CLOUDINARY_CLOUD_NAME,api_key:process.env.CLOUDINARY_API_KEY,api_secret:process.env.CLOUDINARY_API_SECRET});
 const app=express();
 app.use(cors({origin:'*'}));
-app.use(express.json({limit:'5mb'}));
-const multer=require('multer');const upload=multer({storage:multer.memoryStorage()});
-app.post('/api/upload',upload.single('file'),(req,res)=>{if(!req.file)return res.status(400).json({error:'No file'});const b64=`data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;res.json({url:b64,secure_url:b64})});
+app.use(express.json({limit:'10mb'}));
+const upload=multer({storage:multer.memoryStorage()});
 const frontend=path.join(__dirname,'..','frontend');
 app.use(express.static(frontend));
 const supabase=(process.env.SUPABASE_URL&&process.env.SUPABASE_SERVICE_KEY&&createClient)?createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY):null;
-console.log('MODE:',supabase?'SUPABASE':'MEMORY');
+console.log('MODE:',supabase?'SUPABASE':'MEMORY','CLOUDINARY:',!!process.env.CLOUDINARY_CLOUD_NAME);
 const memory={products:[],orders:[]};
 const ADMIN_USER=process.env.ADMIN_USER||'admin';
 const ADMIN_PASS=process.env.ADMIN_PASS||'147258';
 const TOKEN=require('crypto').createHash('sha256').update(ADMIN_USER+':'+ADMIN_PASS).digest('hex');
-
-app.post('/api/login',(req,res)=>{const {username,password}=req.body||{};if(username===ADMIN_USER&&password===ADMIN_PASS)return res.json({token:TOKEN});res.status(401).json({error:'Sai'})});
+app.post('/api/login',(req,res)=>{const{u=req.body.username,p=req.body.password}=req.body||{};if(req.body.username===ADMIN_USER&&req.body.password===ADMIN_PASS)return res.json({token:TOKEN});res.status(401).json({error:'Sai'})});
 const auth=(req,res,next)=>{if((req.headers.authorization||'').replace('Bearer ','')===TOKEN)return next();res.status(401).end()};
-
 app.get('/api/products',async(_,res)=>{if(supabase){const{data}=await supabase.from('products').select('*');return res.json(data||[])}res.json(memory.products)});
 app.post('/api/products',auth,async(req,res)=>{if(supabase){const{data}=await supabase.from('products').insert([req.body]).select().single();return res.json(data)}const it={id:Date.now(),...req.body};memory.products.unshift(it);res.json(it)});
-
-app.post('/api/orders',async(req,res)=>{
-  console.log('=== NEW ORDER ===',new Date().toISOString());
-  console.log(JSON.stringify(req.body));
-  try{
-    const b=req.body||{};
-    const order={
-      customer_name:b.customer_name||b.customerName||'Khach',
-      phone:b.phone||'',
-      address:b.address||'',
-      note:b.note||'',
-      items:Array.isArray(b.items)?b.items:[],
-      total:Number(b.total)||0,
-      created_at:new Date().toISOString()
-    };
-    if(supabase){
-      const{data,error}=await supabase.from('orders').insert([order]).select().single();
-      if(error){console.error('SUPABASE ERR',error);return res.status(500).json({error:error.message})}
-      return res.json({ok:true,order:data});
-    }else{
-      order.id=Date.now();memory.orders.unshift(order);return res.json({ok:true,order});
-    }
-  }catch(e){console.error(e);res.status(500).json({error:e.message})}
-});
-
+app.post('/api/orders',async(req,res)=>{const b=req.body||{};const order={customer_name:b.customer_name||b.customerName||'Khach',phone:b.phone||'',address:b.address||'',note:b.note||'',items:Array.isArray(b.items)?b.items:[],total:Number(b.total)||0,created_at:new Date().toISOString()};if(supabase){const{data,error}=await supabase.from('orders').insert([order]).select().single();if(error)return res.status(500).json({error:error.message});return res.json({ok:true,order:data})}order.id=Date.now();memory.orders.unshift(order);res.json({ok:true,order})});
 app.get('/api/orders',auth,async(_,res)=>{if(supabase){const{data}=await supabase.from('orders').select('*').order('created_at',{ascending:false});return res.json(data||[])}res.json(memory.orders)});
-app.get('/api/stats',auth,async(_,res)=>{const data=supabase?(await supabase.from('orders').select('total,created_at')).data||[]:memory.orders;res.json({totalOrders:data.length,revenue:data.reduce((s,o)=>s+(o.total||0),0),todayOrders:0,todayRevenue:0})});
-
-app.get('*',(req,res)=>{if(req.path.startsWith('/api'))return res.status(404).end();res.sendFile(path.join(frontend,req.path.endsWith('.html')?req.path:'index.html'))});
+app.post('/api/upload',upload.single('file'),async(req,res)=>{try{if(!req.file)return res.status(400).json({error:'No file'});if(!process.env.CLOUDINARY_CLOUD_NAME)return res.json({url:`data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`});const result=await new Promise((resolve,reject)=>{const stream=cloudinary.uploader.upload_stream({folder:'simracer'},(err,r)=>err?reject(err):resolve(r));stream.end(req.file.buffer)});res.json({url:result.secure_url,secure_url:result.secure_url})}catch(e){res.status(500).json({error:e.message})}});
+app.get('*',(req,res)=>{if(req.path.startsWith('/api'))return res.status(404).end();res.sendFile(path.join(frontend,'index.html'))});
 app.listen(process.env.PORT||10000,()=>console.log('READY'));
