@@ -566,19 +566,34 @@ function switchTab(tab){
 async function loadOrders(){
   try{
     const token = getToken();
-    if(!token) throw new Error('Chưa đăng nhập');
     const el = document.getElementById('orders-list');
     el.innerHTML = '<div class="text-center py-20 text-zinc-600">Đang tải đơn hàng...</div>';
-    const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json().catch(()=>({}));
-    let orders = [];
-    if(Array.isArray(data)) orders = data;
-    else if(data && Array.isArray(data.orders)) orders = data.orders;
-    else if(data && Array.isArray(data.data)) orders = data.data;
-    else if(data && Array.isArray(data.items)) orders = data.items;
     
-    // update badge on tab
+    let orders = [];
+    // Thử API custom trước
+    try{
+      const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
+      if(res.ok){
+        const data = await res.json().catch(()=>({}));
+        if(Array.isArray(data)) orders = data;
+        else if(data && Array.isArray(data.orders)) orders = data.orders;
+        else if(data && Array.isArray(data.data)) orders = data.data;
+      } else {
+        throw new Error('fallback');
+      }
+    }catch(e){
+      // Fallback sang Supabase trực tiếp
+      const res2 = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        }
+      });
+      if(!res2.ok) throw new Error('Supabase HTTP '+res2.status);
+      orders = await res2.json();
+    }
+    
+    // update badge
     const tabBtn = document.getElementById('tab-orders');
     let badge = tabBtn.querySelector('.order-badge');
     if(!badge){
@@ -634,7 +649,7 @@ async function loadOrders(){
   }catch(e){
     console.error(e);
     const el = document.getElementById('orders-list');
-    if(el) el.innerHTML = `<div class="text-center py-20 text-red-400">Lỗi tải đơn: ${e.message}</div>`;
+    if(el) el.innerHTML = `<div class="text-center py-20 text-red-400">Lỗi tải đơn: ${e.message}<br><span class="text-[11px] text-zinc-500">Kiểm tra SUPABASE_URL và key</span></div>`;
   }
 }
 
@@ -729,20 +744,26 @@ Nếu thấy 404, hãy điền SUPABASE_URL và KEY ở đầu file, hoặc thê
 async function loadStats(){
   try{
     const token = getToken();
-    if(!token) return;
-    // Lấy trực tiếp từ orders, không cần /api/stats
-    const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json().catch(()=>({}));
     let orders = [];
-    if(Array.isArray(data)) orders = data;
-    else if(data && Array.isArray(data.orders)) orders = data.orders;
-    else if(data && Array.isArray(data.data)) orders = data.data;
+    try{
+      const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
+      if(res.ok){
+        const data = await res.json().catch(()=>({}));
+        if(Array.isArray(data)) orders = data;
+        else if(data && Array.isArray(data.orders)) orders = data.orders;
+        else if(data && Array.isArray(data.data)) orders = data.data;
+      } else { throw new Error('fallback'); }
+    }catch(e){
+      const res2 = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=total,created_at`, {
+        headers: {'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY}
+      });
+      if(!res2.ok) throw new Error('Supabase '+res2.status);
+      orders = await res2.json();
+    }
 
     const totalOrders = orders.length;
     const revenue = orders.reduce((sum,o)=> sum + Number(o.total || o.amount || 0), 0);
     
-    // Tính hôm nay theo giờ VN
     const todayStr = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Ho_Chi_Minh'});
     const todayOrdersList = orders.filter(o=>{
       const d = new Date(o.created_at || o.createdAt || o.date || Date.now());
