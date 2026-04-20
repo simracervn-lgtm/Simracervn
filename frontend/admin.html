@@ -238,6 +238,8 @@
 
 <script>
 const tokenKey = 'token';
+const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
 let products = [];
 
 function showApp(show) {
@@ -510,6 +512,10 @@ window.loadProducts = loadProducts;
 window.editProduct = editProduct;
 window.deleteProduct = deleteProduct;
 window.resetForm = resetForm;
+window.loadOrders = loadOrders;
+window.loadStats = loadStats;
+window.markProcessed = markProcessed;
+window.deleteOrder = deleteOrder;
 </script>
 
 <!-- Cloudinary Upload Widget -->
@@ -559,20 +565,29 @@ function switchTab(tab){
 }
 async function loadOrders(){
   try{
-    const token = getToken();
-    if(!token) throw new Error('Chưa đăng nhập');
     const el = document.getElementById('orders-list');
     el.innerHTML = '<div class="text-center py-20 text-zinc-600">Đang tải đơn hàng...</div>';
-    const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data = await res.json().catch(()=>({}));
     let orders = [];
-    if(Array.isArray(data)) orders = data;
-    else if(data && Array.isArray(data.orders)) orders = data.orders;
-    else if(data && Array.isArray(data.data)) orders = data.data;
-    else if(data && Array.isArray(data.items)) orders = data.items;
+    // Thử API cũ
+    try{
+      const token = getToken();
+      const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
+      if(res.ok){
+        const data = await res.json().catch(()=>({}));
+        if(Array.isArray(data)) orders = data;
+        else if(data && Array.isArray(data.orders)) orders = data.orders;
+        else if(data && Array.isArray(data.data)) orders = data.data;
+        else if(data && Array.isArray(data.items)) orders = data.items;
+      } else { throw new Error('fallback'); }
+    }catch(e){
+      // Fallback Supabase
+      const res2 = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, {
+        headers: {'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY}
+      });
+      if(!res2.ok) throw new Error('Supabase '+res2.status);
+      orders = await res2.json();
+    }
     
-    // update badge on tab
     const tabBtn = document.getElementById('tab-orders');
     let badge = tabBtn.querySelector('.order-badge');
     if(!badge){
@@ -589,6 +604,7 @@ async function loadOrders(){
       return;
     }
     el.innerHTML = orders.map(o=>{
+      const id = o.id || '';
       const name = o.customer_name || o.name || o.customer || o.fullName || 'Khách lẻ';
       const phone = o.phone || o.sdt || o.mobile || '';
       const addr = o.address || o.diachi || '';
@@ -596,16 +612,32 @@ async function loadOrders(){
       const created = o.created_at || o.createdAt || o.date || Date.now();
       const items = Array.isArray(o.items) ? o.items : (Array.isArray(o.products) ? o.products : []);
       const note = o.note || o.ghichu || '';
+      const status = o.status || '';
+      const isProcessed = status === 'processed' || o.processed_at;
       const dateStr = new Date(created).toLocaleString('vi-VN');
       return `
-      <div class="p-4 bg-[#0a0a0a] border border-zinc-800 rounded-xl hover:border-zinc-700 transition">
+      <div class="p-4 bg-[#0a0a0a] border border-zinc-800 rounded-xl hover:border-zinc-700 transition ${isProcessed ? 'opacity-60' : ''}">
         <div class="flex justify-between items-start mb-2">
-          <div><div class="font-medium text-[14px]">${name}</div><div class="text-[12px] text-zinc-500">${phone}</div></div>
+          <div>
+            <div class="flex items-center gap-2">
+              <div class="font-medium text-[14px]">${name}</div>
+              ${isProcessed ? `<span class="text-[10px] px-1.5 py-0.5 bg-green-500/15 text-green-400 rounded border border-green-500/20">Đã xử lý</span>` : `<span class="text-[10px] px-1.5 py-0.5 bg-orange-500/15 text-orange-400 rounded border border-orange-500/20">Mới</span>`}
+            </div>
+            <div class="text-[12px] text-zinc-500">${phone}</div>
+          </div>
           <div class="text-right"><div class="text-[12px] text-zinc-500">${dateStr}</div><div class="text-[13px] font-semibold text-orange-400 mt-1">${Number(total).toLocaleString('vi-VN')}₫</div></div>
         </div>
         ${addr?`<div class="text-[12px] text-zinc-400 mb-1">${addr}</div>`:''}
         <div class="text-[12px] text-zinc-300">${items.map(i=>`${i.name||i.title||i.id||'SP'} x${i.qty||i.quantity||1}`).join(', ')}</div>
         ${note?`<div class="text-[11px] text-zinc-500 mt-1.5 italic">Ghi chú: ${note}</div>`:''}
+        <div class="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
+          <button onclick="markProcessed('${id}', this)" ${isProcessed ? 'disabled' : ''} class="h-7 px-3 ${isProcessed ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#141414] hover:bg-green-950/50 hover:border-green-900'} border border-zinc-800 rounded-lg text-[12px] transition">
+            ${isProcessed ? '✓ Đã xử lý' : 'Đã xử lý'}
+          </button>
+          <button onclick="deleteOrder('${id}')" class="h-7 px-3 bg-[#141414] hover:bg-red-950/50 hover:border-red-900 border border-zinc-800 rounded-lg text-[12px] text-zinc-400 hover:text-red-400 transition">
+            Xóa đơn
+          </button>
+        </div>
       </div>`;
     }).join('');
   }catch(e){
@@ -614,17 +646,90 @@ async function loadOrders(){
     if(el) el.innerHTML = `<div class="text-center py-20 text-red-400">Lỗi tải đơn: ${e.message}</div>`;
   }
 }
+
 async function loadStats(){
   try{
-    const token = getToken();
-    const res = await fetch('/api/stats',{headers:{'Authorization':'Bearer '+token}});
+    let orders = [];
+    try{
+      const token = getToken();
+      const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
+      if(res.ok){
+        const data = await res.json().catch(()=>({}));
+        if(Array.isArray(data)) orders = data;
+        else if(data && Array.isArray(data.orders)) orders = data.orders;
+        else if(data && Array.isArray(data.data)) orders = data.data;
+      } else { throw new Error('fallback'); }
+    }catch(e){
+      const res2 = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=total,created_at`, {
+        headers: {'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY}
+      });
+      if(!res2.ok) throw new Error('Supabase '+res2.status);
+      orders = await res2.json();
+    }
+    const totalOrders = orders.length;
+    const revenue = orders.reduce((sum,o)=> sum + Number(o.total || o.amount || 0), 0);
+    const todayStr = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Ho_Chi_Minh'});
+    const todayOrdersList = orders.filter(o=>{
+      const d = new Date(o.created_at || o.createdAt || o.date || Date.now());
+      const dStr = d.toLocaleDateString('en-CA', {timeZone: 'Asia/Ho_Chi_Minh'});
+      return dStr === todayStr;
+    });
+    const todayOrders = todayOrdersList.length;
+    const todayRevenue = todayOrdersList.reduce((sum,o)=> sum + Number(o.total || o.amount || 0), 0);
+    document.getElementById('stat-orders').textContent = totalOrders;
+    document.getElementById('stat-revenue').textContent = revenue.toLocaleString('vi-VN')+'₫';
+    document.getElementById('stat-today-orders').textContent = todayOrders;
+    document.getElementById('stat-today-revenue').textContent = todayRevenue.toLocaleString('vi-VN')+'₫';
+  }catch(e){console.error(e); document.getElementById('stat-orders').textContent = '!'}
+}
+
+
+
+
+async function markProcessed(id, btn){
+  if(!id) return alert('Thiếu ID đơn hàng');
+  if(!confirm('Đánh dấu đơn này đã xử lý?')) return;
+  try{
+    btn.disabled = true;
+    btn.innerHTML = 'Đang lưu...';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ status: 'processed', processed_at: new Date().toISOString() })
+    });
     if(!res.ok) throw new Error('HTTP '+res.status);
-    const s = await res.json().catch(()=>({}));
-    document.getElementById('stat-orders').textContent = s.totalOrders||s.total_orders||0;
-    document.getElementById('stat-revenue').textContent = Number(s.revenue||0).toLocaleString('vi-VN')+'₫';
-    document.getElementById('stat-today-orders').textContent = s.todayOrders||s.today_orders||0;
-    document.getElementById('stat-today-revenue').textContent = Number(s.todayRevenue||s.today_revenue||0).toLocaleString('vi-VN')+'₫';
-  }catch(e){console.error(e)}
+    btn.innerHTML = '✓ Đã xử lý';
+    btn.className = 'h-7 px-3 bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-800 rounded-lg text-[12px]';
+    setTimeout(loadOrders, 500);
+  }catch(e){
+    alert('Lỗi: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Đã xử lý';
+  }
+}
+
+async function deleteOrder(id){
+  if(!id) return alert('Thiếu ID đơn hàng');
+  if(!confirm('Xóa đơn hàng này? Không thể hoàn tác.')) return;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    loadOrders();
+    loadStats();
+  }catch(e){
+    alert('Lỗi xóa: ' + e.message);
+  }
 }
 
 </script>
