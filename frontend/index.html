@@ -1462,9 +1462,9 @@ document.addEventListener('DOMContentLoaded',function(){
     const cart=JSON.parse(localStorage.getItem('cart')||'[]');
     if(cart.length===0){alert(currentLang==='vi'?'Giỏ trống':'Cart is empty');return;}
     const order={customerName:name,phone,address,note,items:cart,total:cart.reduce((s,i)=>s+i.price*i.qty,0)};
-    try{await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)});
+    try{const r=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(order)});const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'Lỗi server');
       alert(currentLang==='vi'?'Đặt hàng thành công!':'Order placed successfully!');localStorage.removeItem('cart');closeCheckout();location.reload();
-    }catch(err){alert('Error');}
+    }catch(err){alert('Lỗi: '+err.message);}
   });}
 });
 </script>
