@@ -72,8 +72,10 @@ async function login(){
     btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
     const res = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error||'Sai tài khoản');
-    localStorage.setItem(TOKEN_KEY, data.token);
+    if(!res.ok) throw new Error(data.error||data.message||'Sai tài khoản');
+    const tk = data.token || data.accessToken;
+    if(!tk) throw new Error('Không nhận được token');
+    localStorage.setItem(TOKEN_KEY, tk);
     showApp(true);
     loadProducts();
     loadOrders();
