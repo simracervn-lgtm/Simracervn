@@ -250,7 +250,7 @@ async function login() {
     showApp(true);
     loadProducts();
     loadOrders();
-    setInterval(()=>{ if(document.getElementById('tab-orders-content') && !document.getElementById('tab-orders-content').classList.contains('hidden')) loadOrders() }, 15000);
+    setInterval(()=>{ const oc=document.getElementById('tab-orders-content'); if(oc && !oc.classList.contains('hidden')) loadOrders(); },15000);
   } catch (err) {
     alert('Lỗi đăng nhập: ' + err.message);
   } finally {
@@ -441,8 +441,6 @@ async function saveProduct(e) {
     alert(id ? 'Đã cập nhật!' : 'Đã thêm sản phẩm!');
     resetForm();
     loadProducts();
-    loadOrders();
-    setInterval(()=>{ if(document.getElementById('tab-orders-content') && !document.getElementById('tab-orders-content').classList.contains('hidden')) loadOrders() }, 15000);
   } catch (err) {
     alert('Lỗi lưu: ' + err.message);
   } finally {
@@ -467,8 +465,6 @@ async function deleteProduct(id) {
     
     alert('Đã xóa');
     loadProducts();
-    loadOrders();
-    setInterval(()=>{ if(document.getElementById('tab-orders-content') && !document.getElementById('tab-orders-content').classList.contains('hidden')) loadOrders() }, 15000);
   } catch (err) {
     alert('Lỗi xóa: ' + err.message);
   }
@@ -482,7 +478,7 @@ window.addEventListener('DOMContentLoaded', () => {
     showApp(true);
     loadProducts();
     loadOrders();
-    setInterval(()=>{ if(document.getElementById('tab-orders-content') && !document.getElementById('tab-orders-content').classList.contains('hidden')) loadOrders() }, 15000);
+    setInterval(()=>{ const oc=document.getElementById('tab-orders-content'); if(oc && !oc.classList.contains('hidden')) loadOrders(); },15000);
   } else {
     showApp(false);
   }
@@ -548,9 +544,8 @@ async function loadOrders(){
     const res = await fetch('/api/orders',{headers:{'Authorization':'Bearer '+token}});
     if(!res.ok){ throw new Error('HTTP '+res.status) }
     const orders = await res.json();
-    // update badge
     const badge = document.getElementById('orders-badge');
-    if(badge){ if(orders.length>0){ badge.textContent=orders.length; badge.classList.remove('hidden') } else { badge.classList.add('hidden') } }
+    if(badge){ if(orders && orders.length>0){ badge.textContent=orders.length; badge.classList.remove('hidden') } else { badge.classList.add('hidden') } }
     const el = document.getElementById('orders-list');
     if(!orders.length){el.innerHTML='<div class="text-center py-20 text-zinc-600">Chưa có đơn hàng</div>';return}
     el.innerHTML = orders.map(o=>`
@@ -589,8 +584,6 @@ login = async function(){
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-screen').classList.remove('hidden');
     if(typeof loadProducts==='function') loadProducts();
-    loadOrders();
-    setInterval(()=>{ if(document.getElementById('tab-orders-content') && !document.getElementById('tab-orders-content').classList.contains('hidden')) loadOrders() }, 15000);
   }catch(e){alert('Sai tài khoản')}
 }
 </script>
