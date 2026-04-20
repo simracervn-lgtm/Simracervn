@@ -6,6 +6,8 @@ let createClient=null; try{createClient=require('@supabase/supabase-js').createC
 const app=express();
 app.use(cors({origin:'*'}));
 app.use(express.json({limit:'5mb'}));
+const multer=require('multer');const upload=multer({storage:multer.memoryStorage()});
+app.post('/api/upload',upload.single('file'),(req,res)=>{if(!req.file)return res.status(400).json({error:'No file'});const b64=`data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;res.json({url:b64,secure_url:b64})});
 const frontend=path.join(__dirname,'..','frontend');
 app.use(express.static(frontend));
 const supabase=(process.env.SUPABASE_URL&&process.env.SUPABASE_SERVICE_KEY&&createClient)?createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY):null;
