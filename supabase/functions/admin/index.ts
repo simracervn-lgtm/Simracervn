@@ -1,75 +1,105 @@
-// supabase/functions/admin/index.ts
-// Deno Edge Function - chạy với service_role, kiểm tra JWT admin
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    )
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Xác thực user từ JWT
-    const authHeader = req.headers.get('Authorization')!
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token)
+    // Verify user
+    const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!authHeader) throw new Error("Missing auth");
     
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(authHeader);
+    if (userErr || !user) throw new Error("Invalid token");
+
+    // Check admin
+    const { data: admin } = await supabase.from("admin_users").select("id").eq("id", user.id).single();
+    if (!admin) return new Response(JSON.stringify({ error: "Forbidden: not admin" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const url = new URL(req.url);
+    const actionParam = url.searchParams.get("action");
+
+    // Handle file upload
+    if (actionParam === "upload" && req.method === "POST") {
+      const form = await req.formData();
+      const file = form.get("file") as File;
+      if (!file) throw new Error("No file");
+      const ext = file.name.split(".").pop();
+      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      return new Response(JSON.stringify({ url: data.publicUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Kiểm tra admin (tùy chọn: check bảng admin_users)
-    const { data: adminCheck } = await supabaseAdmin
-      .from('admin_users')
-      .select('id')
-      .eq('id', user.id)
-      .single()
-    
-    if (!adminCheck) {
-      return new Response(JSON.stringify({ error: 'Forbidden: not admin' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const action = body.action || actionParam;
+
+    // PRODUCTS
+    if (action === "list_products") {
+      const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return Response.json(data, { headers: corsHeaders });
+    }
+    if (action === "create_product") {
+      const { data, error } = await supabase.from("products").insert(body).select().single();
+      if (error) throw error;
+      return Response.json(data, { headers: corsHeaders });
+    }
+    if (action === "update_product") {
+      const { id, ...updates } = body;
+      const { data, error } = await supabase.from("products").update(updates).eq("id", id).select().single();
+      if (error) throw error;
+      return Response.json(data, { headers: corsHeaders });
+    }
+    if (action === "delete_product") {
+      const { error } = await supabase.from("products").delete().eq("id", body.id);
+      if (error) throw error;
+      return Response.json({ ok: true }, { headers: corsHeaders });
     }
 
-    const { action, payload } = await req.json()
-
-    let result
-    switch (action) {
-      case 'list_orders':
-        result = await supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false })
-        break
-      case 'delete_order':
-        result = await supabaseAdmin.from('orders').delete().eq('id', payload.id)
-        break
-      case 'process_order':
-        result = await supabaseAdmin.from('orders').update({ status: 'processed', processed_at: new Date().toISOString() }).eq('id', payload.id)
-        break
-      case 'stats':
-        const { data: orders } = await supabaseAdmin.from('orders').select('total,created_at')
-        const totalOrders = orders?.length || 0
-        const revenue = orders?.reduce((s, o) => s + Number(o.total || 0), 0) || 0
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-        const todayOrders = orders?.filter(o => new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) === today) || []
-        result = { data: { totalOrders, revenue, todayOrders: todayOrders.length, todayRevenue: todayOrders.reduce((s, o) => s + Number(o.total || 0), 0) } }
-        break
-      default:
-        return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    // ORDERS
+    if (action === "list_orders") {
+      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return Response.json(data, { headers: corsHeaders });
+    }
+    if (action === "update_order") {
+      const { id, status } = body;
+      const { data, error } = await supabase.from("orders").update({ status, processed_at: new Date().toISOString() }).eq("id", id).select().single();
+      if (error) throw error;
+      return Response.json(data, { headers: corsHeaders });
+    }
+    if (action === "delete_order") {
+      const { error } = await supabase.from("orders").delete().eq("id", body.id);
+      if (error) throw error;
+      return Response.json({ ok: true }, { headers: corsHeaders });
     }
 
-    if (result.error) throw result.error
+    // STATS
+    if (action === "stats") {
+      const { data: orders } = await supabase.from("orders").select("total, created_at");
+      const total_orders = orders?.length || 0;
+      const revenue = orders?.reduce((s, o) => s + Number(o.total || 0), 0) || 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const todayOrders = orders?.filter(o => o.created_at?.startsWith(today)) || [];
+      const today_revenue = todayOrders.reduce((s, o) => s + Number(o.total || 0), 0);
+      return Response.json({ total_orders, revenue, today_orders: todayOrders.length, today_revenue }, { headers: corsHeaders });
+    }
 
-    return new Response(JSON.stringify(result.data || { success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-})
+});
