@@ -763,87 +763,66 @@ async function loadStats() {
 
 <script>
 const BRANDS = ['VNM','MOZA','Simagic','Fanatec','Conspit'];
-function initPromotions(){
-  const grid = document.getElementById('promo-grid');
-  if(!grid) return;
-  const saved = JSON.parse(localStorage.getItem('promotions')||'{}');
-  grid.innerHTML = BRANDS.map(b=>`
-    <div class="bg-[#0a0a0a] border border-zinc-800 rounded-xl p-4">
-      <div class="flex items-center justify-between mb-3">
-        <span class="font-medium">${b}</span>
-        <label class="relative inline-flex cursor-pointer">
-          <input type="checkbox" id="promo-${b}-active" class="sr-only peer" ${saved[b]?.active?'checked':''}>
-          <div class="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:bg-orange-500 transition"></div>
-        </label>
-      </div>
-      <div class="flex items-center gap-2">
-        <input type="number" id="promo-${b}-percent" value="${saved[b]?.percent||0}" min="0" max="90" class="w-20 h-9 px-2 bg-[#141414] border border-zinc-800 rounded-lg text-center">
-        <span class="text-[13px] text-zinc-500">% giảm</span>
-      </div>
-    </div>
-  `).join('');
-}
-function savePromotions(){
-  const data = {};
-  BRANDS.forEach(b=>{
-    data[b] = {
-      active: document.getElementById(`promo-${b}-active`).checked,
-      percent: parseInt(document.getElementById(`promo-${b}-percent`).value)||0
-    };
-  });
-  localStorage.setItem('promotions', JSON.stringify(data));
-  // also save to Supabase if needed later
-  document.getElementById('promo-status').textContent = 'Đã lưu! Website sẽ cập nhật ngay.';
-  setTimeout(()=>document.getElementById('promo-status').textContent='',2000);ập nhật ngay.';
-  setTimeout(()=>document.getElementById('promo-status').textContent='',3000);
-}
-// extend switchTab
-const _oldSwitch = window.switchTab;
-window.switchTab = function(tab){
-  ['products','orders','stats','promo'].forEach(t=>{
-    document.getElementById('tab-'+t)?.classList.remove('bg-orange-600','text-white');
-    document.getElementById('tab-'+t)?.classList.add('bg-[#141414]','border','border-zinc-800');
-    document.getElementById('tab-'+t+'-content')?.classList.add('hidden');
-  });
-  document.getElementById('tab-'+tab)?.classList.add('bg-orange-600','text-white');
-  document.getElementById('tab-'+tab)?.classList.remove('bg-[#141414]','border','border-zinc-800');
-  document.getElementById('tab-'+tab+'-content')?.classList.remove('hidden');
-  if(tab==='promo') initPromotions();
-}
-
 
 async function loadPromotions(){
   const grid = document.getElementById('promo-grid');
   if(!grid) return;
-  const { data, error } = await supabaseClient.from('promotions').select('*');
-  const map = {};
-  (data||[]).forEach(p=> map[p.brand]=p);
-  grid.innerHTML = '';
-  BRANDS.forEach(b=>{
-    const p = map[b] || {active:false, percent:0};
-    grid.innerHTML += `
+  grid.innerHTML = '<div class="col-span-3 text-zinc-500 text-[13px] p-4">Đang tải khuyến mãi từ Supabase...</div>';
+  try {
+    const { data, error } = await supabaseClient.from('promotions').select('*');
+    if(error) throw error;
+    const map = {};
+    (data||[]).forEach(p => { map[p.brand] = p; });
+    
+    grid.innerHTML = BRANDS.map(b=>{
+      const p = map[b] || {active:false, percent:0};
+      return `
       <div class="bg-[#0a0a0a] border border-zinc-800 rounded-xl p-4">
         <div class="flex items-center justify-between mb-3">
-          <span class="font-semibold">${b}</span>
-          <label class="flex items-center gap-2 text-[12px]">
-            <input type="checkbox" id="promo-${b}-active" ${p.active?'checked':''} class="w-4 h-4 accent-orange-500">
-            Bật KM
+          <span class="font-medium">${b}</span>
+          <label class="relative inline-flex cursor-pointer">
+            <input type="checkbox" id="promo-${b}-active" class="sr-only peer" ${p.active?'checked':''}>
+            <div class="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:bg-orange-500 transition"></div>
           </label>
         </div>
         <div class="flex items-center gap-2">
-          <input type="number" id="promo-${b}-percent" value="${p.percent||0}" min="0" max="90" class="flex-1 h-9 px-3 bg-[#0a0a0a] border border-zinc-800 rounded-lg text-[13px]">
-          <span class="text-[13px] text-zinc-400">%</span>
+          <input type="number" id="promo-${b}-percent" value="${p.percent||0}" min="0" max="90" class="w-20 h-9 px-2 bg-[#141414] border border-zinc-800 rounded-lg text-center">
+          <span class="text-[13px] text-zinc-500">% giảm</span>
         </div>
-      </div>
-    `;
-  });
+      </div>`;
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = `<div class="text-red-400 text-[13px] p-4">Lỗi tải KM: ${e.message}<br><span class="text-zinc-500">Kiểm tra bảng 'promotions' trong Supabase</span></div>`;
+  }
 }
 
-  btn.textContent = 'Đã lưu lên Supabase! Website cập nhật ngay.';
-  setTimeout(()=>btn.textContent='',3000);
+async function savePromotions(){
+  const status = document.getElementById('promo-status');
+  const btn = document.querySelector('button[onclick="savePromotions()"]');
+  try {
+    if(btn){ btn.disabled = true; btn.textContent = 'Đang lưu...'; }
+    const rows = BRANDS.map(b=>{
+      return {
+        brand: b,
+        active: document.getElementById(`promo-${b}-active`)?.checked || false,
+        percent: parseInt(document.getElementById(`promo-${b}-percent`)?.value) || 0,
+        updated_at: new Date().toISOString()
+      };
+    });
+    // Upsert - yêu cầu cột 'brand' là PRIMARY KEY hoặc UNIQUE
+    const { error } = await supabaseClient.from('promotions').upsert(rows, { onConflict: 'brand' });
+    if(error) throw error;
+    
+    status.textContent = '✓ Đã lưu lên Supabase! Website cập nhật ngay.';
+    status.className = 'ml-3 text-[12px] text-green-400';
+  } catch(e) {
+    status.textContent = 'Lỗi lưu: ' + e.message;
+    status.className = 'ml-3 text-[12px] text-red-400';
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Lưu khuyến mãi'; }
+    setTimeout(()=>{ status.textContent=''; status.className='ml-3 text-[12px] text-zinc-500'; }, 3500);
+  }
 }
-
-
 </script>
 
 </body>
