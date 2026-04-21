@@ -690,32 +690,21 @@ section, header, footer, main {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-// PROMOTIONS
-function getPromotions(){
-  try{ return JSON.parse(localStorage.getItem('promotions')||'{}'); }catch(e){return {}}
-}
+function getPromotions(){ try{ return JSON.parse(localStorage.getItem('promotions')||'{}'); }catch(e){return{}} }
 function getDiscountedPrice(product){
   const promos = getPromotions();
-  const brandKey = Object.keys(promos).find(k=>k.toLowerCase()===product.brand?.toLowerCase());
-  const p = brandKey ? promos[brandKey] : null;
-  if(p && p.active && p.percent>0){
-    return Math.round(product.price * (100-p.percent)/100);
-  }
+  const brand = (product.brand||'').toLowerCase();
+  const key = Object.keys(promos).find(k=>k.toLowerCase()===brand);
+  const p = key? promos[key]: null;
+  if(p && p.active && p.percent>0){ return Math.round(product.price * (100-p.percent)/100); }
   return product.price;
 }
-function renderPrice(product){
+function getPromoPercent(product){
   const promos = getPromotions();
-  const brandKey = Object.keys(promos).find(k=>k.toLowerCase()===product.brand?.toLowerCase());
-  const p = brandKey ? promos[brandKey] : null;
-  if(p && p.active && p.percent>0){
-    const newPrice = getDiscountedPrice(product);
-    return `<div class="flex items-baseline gap-2">
-      <span class="text-2xl font-extrabold gradient-text">${formatPrice(newPrice)}</span>
-      <span class="text-sm text-zinc-500 line-through">${renderPrice(product).replace(/"/g, "'")}</span>
-      <span class="text-[11px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">-${p.percent}%</span>
-    </div>`;
-  }
-  return `<p class="text-2xl font-extrabold gradient-text mb-4">${renderPrice(product).replace(/"/g, "'")}</p>`;
+  const brand = (product.brand||'').toLowerCase();
+  const key = Object.keys(promos).find(k=>k.toLowerCase()===brand);
+  const p = key? promos[key]: null;
+  return (p && p.active)? p.percent:0;
 }
 </script>
 
@@ -1164,7 +1153,14 @@ function renderProducts(filter = 'all') {
             </div>
             <div class="p-5">
                 <h3 class="font-bold text-lg mb-2 line-clamp-2 min-h-[56px]">${product.name}</h3>
-                <p class="text-2xl font-extrabold gradient-text mb-4">${renderPrice(product).replace(/"/g, "'")}</p>
+                ${(() => {
+      const pct = getPromoPercent(product);
+      if(pct>0){
+        const newP = getDiscountedPrice(product);
+        return `<div class="mb-4"><div class="flex items-baseline gap-2"><span class="text-2xl font-extrabold gradient-text">${formatPrice(newP)}</span><span class="text-sm text-zinc-500 line-through">${formatPrice(getDiscountedPrice(product))}</span><span class="text-[11px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">-${pct}%</span></div></div>`;
+      }
+      return `<p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(getDiscountedPrice(product))}</p>`;
+    })()}
                 <div class="flex gap-2">
                     <button onclick="showProductModal(${product.id})" class="flex-1 btn-primary py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                         <i class="fa-solid fa-eye"></i>
@@ -1274,7 +1270,7 @@ function showProductModal(id) {
                     <div class="mt-auto">
                         <div class="flex items-baseline gap-2 mb-4">
                             <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}
-                            <span class="text-4xl font-extrabold gradient-text">${renderPrice(product).replace(/"/g, "'")}
+                            <span class="text-4xl font-extrabold gradient-text">${formatPrice(getDiscountedPrice(product))}
                         </div>
                         <button onclick="addToCart(${product.id}); closeModal();" class="btn-primary w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cart-plus"></i>
