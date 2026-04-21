@@ -1,196 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<!-- Playables SDK -->
-<script>// Playables SDK v1.0.0
-// Game lifecycle bridge: rAF-based game-ready detection + event communication
-(function() {
-  'use strict';
-
-  // Idempotency: skip if already initialized (e.g., server-side injection
-  // followed by client-side inject-javascript via the Bloks webview component).
-  if (window.playablesSDK) return;
-
-  var HANDLER_NAME = 'playablesGameEventHandler';
-  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
-  var RAF_FRAME_THRESHOLD = 3;
-
-  var gameReadySent = false;
-  var firstInteractionSent = false;
-  var errorSent = false;
-  var frameCount = 0;
-  var originalRAF = window.requestAnimationFrame;
-
-  // --- Transport Layer ---
-
-  function hasIOSBridge() {
-    return !!(window.webkit &&
-              window.webkit.messageHandlers &&
-              window.webkit.messageHandlers[HANDLER_NAME]);
-  }
-
-  function hasAndroidBridge() {
-    return !!(window[ANDROID_BRIDGE_NAME] &&
-              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
-  }
-
-  function isInIframe() {
-    return !!(window.parent && window.parent !== window);
-  }
-
-  function sendEvent(eventName, payload) {
-    var message = {
-      type: eventName,
-      payload: payload || {},
-      timestamp: Date.now()
-    };
-
-    if (hasIOSBridge()) {
-      try {
-        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
-      } catch (e) { /* ignore */ }
-      return;
-    }
-
-    if (hasAndroidBridge()) {
-    try {
-      var p = payload || {};
-      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
-      window[ANDROID_BRIDGE_NAME].postEvent(
-        eventName,
-        JSON.stringify(p)
-      );
-    } catch (e) { /* ignore */ }
-    return;
-  }
-
-    if (isInIframe()) {
-      try {
-        window.parent.postMessage(message, '*');
-      } catch (e) { /* ignore */ }
-      return;
-    }
-  }
-
-  // --- rAF Game-Ready Detection ---
-
-  function onFrame() {
-    if (gameReadySent) return;
-
-    frameCount++;
-    if (frameCount >= RAF_FRAME_THRESHOLD) {
-      gameReadySent = true;
-      sendEvent('game_ready', {
-        frame_count: frameCount,
-        detected_at: Date.now()
-      });
-      return;
-    }
-
-    originalRAF.call(window, onFrame);
-  }
-
-  if (originalRAF) {
-    window.requestAnimationFrame = function(callback) {
-      if (!gameReadySent) {
-        return originalRAF.call(window, function(timestamp) {
-          frameCount++;
-          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
-            gameReadySent = true;
-            sendEvent('game_ready', {
-              frame_count: frameCount,
-              detected_at: Date.now()
-            });
-          }
-          callback(timestamp);
-        });
-      }
-      return originalRAF.call(window, callback);
-    };
-  }
-
-  // --- First User Interaction Detection ---
-
-  function setupFirstInteractionDetection() {
-    var events = ['touchstart', 'mousedown', 'keydown'];
-
-    function onFirstInteraction() {
-      if (firstInteractionSent) return;
-      firstInteractionSent = true;
-      sendEvent('user_interaction_start', null);
-
-      for (var i = 0; i < events.length; i++) {
-        document.removeEventListener(events[i], onFirstInteraction, true);
-      }
-    }
-
-    for (var i = 0; i < events.length; i++) {
-      document.addEventListener(events[i], onFirstInteraction, true);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
-  } else {
-    setupFirstInteractionDetection();
-  }
-
-  // --- Auto Error Capture ---
-
-  window.addEventListener('error', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    sendEvent('error', {
-      message: event.message || 'Unknown error',
-      source: event.filename || '',
-      lineno: event.lineno || 0,
-      colno: event.colno || 0,
-      auto_captured: true
-    });
-  });
-
-  window.addEventListener('unhandledrejection', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    var reason = event.reason;
-    sendEvent('error', {
-      message: (reason instanceof Error) ? reason.message : String(reason),
-      type: 'unhandled_promise_rejection',
-      auto_captured: true
-    });
-  });
-
-  // --- Public API ---
-
-  window.playablesSDK = {
-    complete: function(score) {
-      sendEvent('game_ended', {
-        score: score,
-        completed: true
-      });
-    },
-
-    error: function(message) {
-      if (errorSent) return;
-      errorSent = true;
-      sendEvent('error', {
-        message: message || 'Unknown error',
-        auto_captured: false
-      });
-    },
-
-    sendEvent: function(eventName, payload) {
-      if (!eventName || typeof eventName !== 'string') return;
-      sendEvent(eventName, payload);
-    }
-  };
-
-  // Kick off rAF detection in case no game code calls rAF immediately
-  if (originalRAF) {
-    originalRAF.call(window, onFrame);
-  }
-})();</script>
-<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Sim Racing Store</title>
@@ -686,14 +496,13 @@ document.getElementById('fileUpload')?.addEventListener('change', async (e) => {
 });
 
 function switchTab(tab) {
-  ['products','orders','stats','promo'].forEach(t => {
+  ['products','orders','stats'].forEach(t => {
     document.getElementById('tab-'+t).className = t===tab ? 'px-4 h-9 bg-orange-600 text-white rounded-lg text-[13px] font-medium' : 'px-4 h-9 bg-[#141414] border border-zinc-800 rounded-lg text-[13px]';
     document.getElementById('tab-'+t+'-content').classList.toggle('hidden', t!==tab);
   });
   if (tab==='orders') loadOrders();
   if (tab==='stats') loadStats();
   if (tab==='products') loadProducts();
-  if (tab==='promo') loadPromotions();
 }
 
 async function loadOrders() {
@@ -763,65 +572,66 @@ async function loadStats() {
 
 <script>
 const BRANDS = ['VNM','MOZA','Simagic','Fanatec','Conspit'];
-
-async function loadPromotions(){
+async function initPromotions(){
   const grid = document.getElementById('promo-grid');
   if(!grid) return;
-  grid.innerHTML = '<div class="col-span-3 text-zinc-500 text-[13px] p-4">Đang tải khuyến mãi từ Supabase...</div>';
+  let saved = JSON.parse(localStorage.getItem('promotions')||'{}');
   try {
-    const { data, error } = await supabaseClient.from('promotions').select('*');
-    if(error) throw error;
-    const map = {};
-    (data||[]).forEach(p => { map[p.brand] = p; });
-    
-    grid.innerHTML = BRANDS.map(b=>{
-      const p = map[b] || {active:false, percent:0};
-      return `
-      <div class="bg-[#0a0a0a] border border-zinc-800 rounded-xl p-4">
-        <div class="flex items-center justify-between mb-3">
-          <span class="font-medium">${b}</span>
-          <label class="relative inline-flex cursor-pointer">
-            <input type="checkbox" id="promo-${b}-active" class="sr-only peer" ${p.active?'checked':''}>
-            <div class="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:bg-orange-500 transition"></div>
-          </label>
-        </div>
-        <div class="flex items-center gap-2">
-          <input type="number" id="promo-${b}-percent" value="${p.percent||0}" min="0" max="90" class="w-20 h-9 px-2 bg-[#141414] border border-zinc-800 rounded-lg text-center">
-          <span class="text-[13px] text-zinc-500">% giảm</span>
-        </div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    grid.innerHTML = `<div class="text-red-400 text-[13px] p-4">Lỗi tải KM: ${e.message}<br><span class="text-zinc-500">Kiểm tra bảng 'promotions' trong Supabase</span></div>`;
-  }
+    const { data } = await supabase.from('promotions').select('*');
+    if(data && data.length){
+      saved = {};
+      data.forEach(p=>{ saved[p.brand] = {active: p.active, percent: p.percent}; });
+    }
+  } catch(e){ console.warn('Load promo failed', e); }
+  grid.innerHTML = BRANDS.map(b=>`
+    <div class="bg-[#0a0a0a] border border-zinc-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-medium">${b}</span>
+        <label class="relative inline-flex cursor-pointer">
+          <input type="checkbox" id="promo-${b}-active" ${saved[b]?.active?'checked':''} class="sr-only peer">
+          <div class="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:bg-orange-600 transition"></div>
+        </label>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="number" id="promo-${b}-percent" value="${saved[b]?.percent||0}" min="0" max="90" class="w-20 h-9 px-2 bg-[#141414] border border-zinc-800 rounded-lg text-[14px]">
+        <span class="text-[13px] text-zinc-500">%</span>
+      </div>
+    </div>
+  `).join('');
 }
-
 async function savePromotions(){
-  const status = document.getElementById('promo-status');
-  const btn = document.querySelector('button[onclick="savePromotions()"]');
+  const data = {};
+  const rows = [];
+  BRANDS.forEach(b=>{
+    const active = document.getElementById(`promo-${b}-active`).checked;
+    const percent = parseInt(document.getElementById(`promo-${b}-percent`).value)||0;
+    data[b] = { active, percent };
+    rows.push({ brand: b, active, percent });
+  });
+  localStorage.setItem('promotions', JSON.stringify(data));
+  
+  document.getElementById('promo-status').textContent = 'Đang lưu...';
   try {
-    if(btn){ btn.disabled = true; btn.textContent = 'Đang lưu...'; }
-    const rows = BRANDS.map(b=>{
-      return {
-        brand: b,
-        active: document.getElementById(`promo-${b}-active`)?.checked || false,
-        percent: parseInt(document.getElementById(`promo-${b}-percent`)?.value) || 0,
-        updated_at: new Date().toISOString()
-      };
-    });
-    // Upsert - yêu cầu cột 'brand' là PRIMARY KEY hoặc UNIQUE
-    const { error } = await supabaseClient.from('promotions').upsert(rows, { onConflict: 'brand' });
+    const { error } = await supabase.from('promotions').upsert(rows, { onConflict: 'brand' });
     if(error) throw error;
-    
-    status.textContent = '✓ Đã lưu lên Supabase! Website cập nhật ngay.';
-    status.className = 'ml-3 text-[12px] text-green-400';
+    document.getElementById('promo-status').textContent = 'Đã lưu lên Supabase! Website sẽ cập nhật ngay.';
   } catch(e) {
-    status.textContent = 'Lỗi lưu: ' + e.message;
-    status.className = 'ml-3 text-[12px] text-red-400';
-  } finally {
-    if(btn){ btn.disabled = false; btn.textContent = 'Lưu khuyến mãi'; }
-    setTimeout(()=>{ status.textContent=''; status.className='ml-3 text-[12px] text-zinc-500'; }, 3500);
+    document.getElementById('promo-status').textContent = 'Lỗi: ' + e.message;
   }
+  setTimeout(()=>document.getElementById('promo-status').textContent='',4000);
+}
+// extend switchTab
+const _oldSwitch = window.switchTab;
+window.switchTab = function(tab){
+  ['products','orders','stats','promo'].forEach(t=>{
+    document.getElementById('tab-'+t)?.classList.remove('bg-orange-600','text-white');
+    document.getElementById('tab-'+t)?.classList.add('bg-[#141414]','border','border-zinc-800');
+    document.getElementById('tab-'+t+'-content')?.classList.add('hidden');
+  });
+  document.getElementById('tab-'+tab)?.classList.add('bg-orange-600','text-white');
+  document.getElementById('tab-'+tab)?.classList.remove('bg-[#141414]','border','border-zinc-800');
+  document.getElementById('tab-'+tab+'-content')?.classList.remove('hidden');
+  if(tab==='promo') initPromotions();
 }
 </script>
 
