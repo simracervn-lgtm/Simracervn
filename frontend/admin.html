@@ -577,7 +577,7 @@ async function initPromotions(){
   if(!grid) return;
   let saved = JSON.parse(localStorage.getItem('promotions')||'{}');
   try {
-    const { data } = await supabase.from('promotions').select('*');
+    const { data } = await supabaseClient.from('promotions').select('*');
     if(data && data.length){
       saved = {};
       data.forEach(p=>{ saved[p.brand] = {active: p.active, percent: p.percent}; });
@@ -612,7 +612,7 @@ async function savePromotions(){
   
   document.getElementById('promo-status').textContent = 'Đang lưu...';
   try {
-    const { error } = await supabase.from('promotions').upsert(rows, { onConflict: 'brand' });
+    const { error } = await supabaseClient.from('promotions').upsert(rows, { onConflict: 'brand' });
     if(error) throw error;
     document.getElementById('promo-status').textContent = 'Đã lưu lên Supabase! Website sẽ cập nhật ngay.';
   } catch(e) {
