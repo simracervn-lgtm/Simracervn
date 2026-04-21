@@ -496,13 +496,14 @@ document.getElementById('fileUpload')?.addEventListener('change', async (e) => {
 });
 
 function switchTab(tab) {
-  ['products','orders','stats'].forEach(t => {
+  ['products','orders','stats','promo'].forEach(t => {
     document.getElementById('tab-'+t).className = t===tab ? 'px-4 h-9 bg-orange-600 text-white rounded-lg text-[13px] font-medium' : 'px-4 h-9 bg-[#141414] border border-zinc-800 rounded-lg text-[13px]';
     document.getElementById('tab-'+t+'-content').classList.toggle('hidden', t!==tab);
   });
   if (tab==='orders') loadOrders();
   if (tab==='stats') loadStats();
   if (tab==='products') loadProducts();
+  if (tab==='promo') loadPromotions();
 }
 
 async function loadOrders() {
@@ -603,6 +604,7 @@ function savePromotions(){
   localStorage.setItem('promotions', JSON.stringify(data));
   // also save to Supabase if needed later
   document.getElementById('promo-status').textContent = 'Đã lưu! Website sẽ cập nhật ngay.';
+  setTimeout(()=>document.getElementById('promo-status').textContent='',2000);ập nhật ngay.';
   setTimeout(()=>document.getElementById('promo-status').textContent='',3000);
 }
 // extend switchTab
@@ -618,6 +620,32 @@ window.switchTab = function(tab){
   document.getElementById('tab-'+tab+'-content')?.classList.remove('hidden');
   if(tab==='promo') initPromotions();
 }
+
+function loadPromotions(){
+  const grid = document.getElementById('promo-grid');
+  if(!grid) return;
+  const saved = JSON.parse(localStorage.getItem('promotions') || '{}');
+  grid.innerHTML = '';
+  BRANDS.forEach(b=>{
+    const data = saved[b] || {active:false, percent:0};
+    grid.innerHTML += `
+      <div class="bg-[#0a0a0a] border border-zinc-800 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="font-semibold">${b}</span>
+          <label class="flex items-center gap-2 text-[12px]">
+            <input type="checkbox" id="promo-${b}-active" ${data.active?'checked':''} class="w-4 h-4 accent-orange-500">
+            Bật KM
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="number" id="promo-${b}-percent" value="${data.percent}" min="0" max="90" class="flex-1 h-9 px-3 bg-[#0a0a0a] border border-zinc-800 rounded-lg text-[13px]">
+          <span class="text-[13px] text-zinc-400">%</span>
+        </div>
+      </div>
+    `;
+  });
+}
+
 </script>
 
 </body>
