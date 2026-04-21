@@ -709,26 +709,28 @@ function getPromoPercent(product){
 </script>
 
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// === PROMOTIONS FROM LOCALSTORAGE ===
-function getPromotions(){
-  try {
-    const defaults = {"VNM":{"active":false,"percent":0},"MOZA":{"active":false,"percent":0},"Simagic":{"active":false,"percent":0},"Fanatec":{"active":false,"percent":0},"Conspit":{"active":false,"percent":0}};
-    const saved = localStorage.getItem('promotions');
-    return saved ? JSON.parse(saved) : defaults;
-  } catch(e){ return {}; }
-}
-function getPromo(product){
-  const promos = getPromotions();
-  const key = Object.keys(promos).find(k => k.toLowerCase() === (product.brand||'').toLowerCase());
-  return key ? promos[key] : null;
+const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let PROMO_MAP = {};
+async function loadPromotions(){
+  const { data } = await supabase.from('promotions').select('*');
+  PROMO_MAP = {};
+  (data||[]).forEach(p=>{ PROMO_MAP[p.brand] = {percent:p.percent, active:p.active}; });
+  // update banner
+  const active = Object.entries(PROMO_MAP).filter(([k,v])=>v.active && v.percent>0).map(([k,v])=>`${k} -${v.percent}%`);
+  const b = document.getElementById('promo-banner');
+  if(b && active.length){ b.textContent = '🔥 KHUYẾN MÃI: ' + active.join(' • '); b.style.display='block'; }
 }
 function getDiscounted(product){
-  const p = getPromo(product);
-  return (p && p.active && p.percent>0) ? Math.round(product.price * (100 - p.percent)/100) : product.price;
+  const p = PROMO_MAP[product.brand];
+  return (p && p.active && p.percent>0) ? Math.round(product.price * (100-p.percent)/100) : product.price;
 }
 function getPercent(product){
-  const p = getPromo(product);
+  const p = PROMO_MAP[product.brand];
   return (p && p.active) ? p.percent : 0;
 }
 function renderPriceHTML(product){
@@ -738,6 +740,7 @@ function renderPriceHTML(product){
   }
   return `${renderPriceHTML(product)}`;
 }
+document.addEventListener('DOMContentLoaded', loadPromotions);
 </script>
 
 </head>
@@ -1151,7 +1154,7 @@ async function loadProducts(retry=0){
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
-setTimeout(()=>{ if(window.products && products.length){ cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: getDiscounted(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); if(typeof updateCart==='function') updateCart(); } }, 800);
+setTimeout(async ()=>{ await loadPromotions(); if(window.products && products.length){ cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: getDiscounted(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); if(typeof updateCart==='function') updateCart(); } }, 1000);
 let currentFilter = 'all';
 
 function formatPrice(price) {
