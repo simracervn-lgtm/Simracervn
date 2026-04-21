@@ -1154,7 +1154,7 @@ async function loadProducts(retry=0){
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
-setTimeout(async ()=>{ await loadPromotions(); if(window.products && products.length){ cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: getDiscounted(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); if(typeof updateCart==='function') updateCart(); } }, 1000);
+setTimeout(async ()=>{ await loadPromotions(); if(window.products && products.length){ renderProducts('all'); cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: getDiscounted(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); if(typeof updateCart==='function') updateCart(); } }, 1000);
 let currentFilter = 'all';
 
 function formatPrice(price) {
