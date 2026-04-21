@@ -1119,6 +1119,8 @@ async function loadProducts(retry=0){
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
+// Update cart prices to promo on load
+setTimeout(()=>{ if(window.products){ cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: promoPrice(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); updateCart(); } }, 500);
 let currentFilter = 'all';
 
 function formatPrice(price) {
@@ -1296,7 +1298,7 @@ function addToCart(id) {
     if (existing) {
         existing.quantity += 1;
     } else {
-        cart.push({...product, quantity: 1});
+        cart.push({...product, price: promoPrice(product), originalPrice: product.price, quantity: 1});
     }
     
     saveCart();
