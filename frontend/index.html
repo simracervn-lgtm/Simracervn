@@ -1079,14 +1079,9 @@ const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let products = [];
-const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
-const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 async function loadProducts(retry=0){
   try{
-    const { data, error } = await supa.from('products').select('*').order('created_at',{ascending:false});
+    const { data, error } = await supa.from('products').select('*').order('created_at', {ascending:false});
     if(error) throw error;
     products = data || [];
     console.log('Loaded products:', products.length);
@@ -1097,7 +1092,9 @@ async function loadProducts(retry=0){
       setTimeout(()=>loadProducts(retry+1), 1200);
       return;
     }
-    document.getElementById('products-grid').innerHTML = `<div class="col-span-full text-center py-12"><p class="text-gray-400 mb-4">Không tải được sản phẩm. Vui lòng tắt AdBlock và tải lại.</p><button onclick="location.reload()" class="px-4 py-2 bg-orange-500 rounded-lg">Tải lại</button></div>`;
+    products=[];
+    const grid = document.getElementById('products-grid');
+    if(grid) grid.innerHTML = `<div class="col-span-full text-center py-12"><p class="text-gray-400 mb-4">Không tải được sản phẩm. Tắt AdBlock và tải lại.</p><button onclick="location.reload()" class="px-4 py-2 bg-orange-500 rounded-lg">Tải lại</button></div>`;
     return;
   }
   renderProducts("all");
