@@ -1115,12 +1115,22 @@ const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   global: { fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }) }
 });
 
+let promotions = [];
 async function loadProducts(retry=0){
   try{
     const { data, error } = await supa.from('products').select('*').order('created_at', {ascending:false});
     if(error) throw error;
     products = data || [];
     console.log('Loaded products:', products.length);
+    // Load active promotions
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: promoData } = await supa.from('promotions').select('*').eq('active', true).lte('start_date', today).gte('end_date', today);
+      promotions = promoData || [];
+      // also include promos without dates
+      const { data: promoNoDate } = await supa.from('promotions').select('*').eq('active', true).is('start_date', null);
+      promotions = [...promotions, ...(promoNoDate||[])];
+    } catch(e) { console.warn('Promo load failed', e); promotions = []; }
     // if(products.length===0 && retry<2) throw new Error('empty'); // cho phép hiển thị rỗng để debug
   }catch(e){
     console.warn('Load products failed, retry', retry+1, e);
@@ -1173,7 +1183,14 @@ function renderProducts(filter = 'all') {
             </div>
             <div class="p-5">
                 <h3 class="font-bold text-lg mb-2 line-clamp-2 min-h-[56px]">${product.name}</h3>
-                <p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(product.price)}</p>
+                ${(() => {
+                    const promo = promotions.find(pr => pr.product_id === product.id && pr.active);
+                    if (promo && promo.discount_percent > 0) {
+                      const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100);
+                      return `<div class="mb-4"><p class="text-lg text-gray-500 line-through">${formatPrice(product.price)}</p><p class="text-2xl font-extrabold gradient-text">${formatPrice(newPrice)} <span class="ml-2 text-xs bg-red-600 text-white px-2 py-0.5 rounded-full">-${promo.discount_percent}%</span></p></div>`;
+                    }
+                    return `<p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(product.price)}</p>`;
+                  })()}
                 <div class="flex gap-2">
                     <button onclick="showProductModal(${product.id})" class="flex-1 btn-primary py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                         <i class="fa-solid fa-eye"></i>
