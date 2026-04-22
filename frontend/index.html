@@ -1124,12 +1124,8 @@ async function loadProducts(retry=0){
     console.log('Loaded products:', products.length);
     // Load active promotions
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: promoData } = await supa.from('promotions').select('*').eq('active', true).lte('start_date', today).gte('end_date', today);
+      const { data: promoData } = await supa.from('promotions').select('*').eq('active', true);
       promotions = promoData || [];
-      // also include promos without dates
-      const { data: promoNoDate } = await supa.from('promotions').select('*').eq('active', true).is('start_date', null);
-      promotions = [...promotions, ...(promoNoDate||[])];
     } catch(e) { console.warn('Promo load failed', e); promotions = []; }
     // if(products.length===0 && retry<2) throw new Error('empty'); // cho phép hiển thị rỗng để debug
   }catch(e){
@@ -1184,7 +1180,7 @@ function renderProducts(filter = 'all') {
             <div class="p-5">
                 <h3 class="font-bold text-lg mb-2 line-clamp-2 min-h-[56px]">${product.name}</h3>
                 ${(() => {
-                    const promo = promotions.find(pr => pr.product_id === product.id && pr.active);
+                    const promo = promotions.find(pr => pr.product_id == product.id && pr.active);
                     if (promo && promo.discount_percent > 0) {
                       const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100);
                       return `<div class="mb-4"><p class="text-lg text-gray-500 line-through">${formatPrice(product.price)}</p><p class="text-2xl font-extrabold gradient-text">${formatPrice(newPrice)} <span class="ml-2 text-xs bg-red-600 text-white px-2 py-0.5 rounded-full">-${promo.discount_percent}%</span></p></div>`;
@@ -1300,7 +1296,7 @@ function showProductModal(id) {
                     <div class="mt-auto">
                         <div class="flex items-baseline gap-2 mb-4">
                             <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}
-                            <span class="text-4xl font-extrabold gradient-text">${formatPrice(product.price)}
+                            <span class="text-4xl font-extrabold gradient-text">${(() => { const promo = promotions.find(pr => pr.product_id == product.id && pr.active); if (promo && promo.discount_percent > 0) { const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100); return `${formatPrice(newPrice)} <span class="ml-2 text-sm line-through text-gray-500">${formatPrice(product.price)}</span> <span class="ml-2 text-xs bg-red-600 text-white px-2 py-0.5 rounded-full">-${promo.discount_percent}%</span>`; } return formatPrice(product.price); })()}
                         </div>
                         <button onclick="addToCart(${product.id}); closeModal();" class="btn-primary w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cart-plus"></i>
@@ -1329,11 +1325,13 @@ function closeModal(event) {
 function addToCart(id) {
     const product = products.find(p => p.id === id);
     const existing = cart.find(item => item.id === id);
+    const promo = promotions.find(pr => pr.product_id == product.id && pr.active);
+    const finalPrice = promo && promo.discount_percent > 0 ? Math.round(product.price * (100 - promo.discount_percent) / 100) : product.price;
     
     if (existing) {
         existing.quantity += 1;
     } else {
-        cart.push({...product, quantity: 1});
+        cart.push({...product, price: finalPrice, originalPrice: product.price, quantity: 1});
     }
     
     saveCart();
