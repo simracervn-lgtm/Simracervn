@@ -1069,7 +1069,9 @@ section, header, footer, main {
 let products = [];
 const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
-const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  global: { fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' }) }
+});
 
 async function loadProducts(retry=0){
   try{
@@ -1090,6 +1092,8 @@ async function loadProducts(retry=0){
     return;
   }
   renderProducts("all");
+  // Bật realtime để tự cập nhật khi admin thay đổi
+  try { supa.channel('products-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => loadProducts()).subscribe(); } catch(e){}
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
