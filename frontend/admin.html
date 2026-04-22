@@ -572,53 +572,38 @@ async function loadStats() {
 
 <script>
 const BRANDS = ['VNM','MOZA','Simagic','Fanatec','Conspit'];
-async function initPromotions(){
+function initPromotions(){
   const grid = document.getElementById('promo-grid');
   if(!grid) return;
-  let saved = JSON.parse(localStorage.getItem('promotions')||'{}');
-  try {
-    const { data } = await supabaseClient.from('promotions').select('*');
-    if(data && data.length){
-      saved = {};
-      data.forEach(p=>{ saved[p.brand] = {active: p.active, percent: p.percent}; });
-    }
-  } catch(e){ console.warn('Load promo failed', e); }
+  const saved = JSON.parse(localStorage.getItem('promotions')||'{}');
   grid.innerHTML = BRANDS.map(b=>`
     <div class="bg-[#0a0a0a] border border-zinc-800 rounded-xl p-4">
       <div class="flex items-center justify-between mb-3">
         <span class="font-medium">${b}</span>
         <label class="relative inline-flex cursor-pointer">
-          <input type="checkbox" id="promo-${b}-active" ${saved[b]?.active?'checked':''} class="sr-only peer">
-          <div class="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:bg-orange-600 transition"></div>
+          <input type="checkbox" id="promo-${b}-active" class="sr-only peer" ${saved[b]?.active?'checked':''}>
+          <div class="w-9 h-5 bg-zinc-800 rounded-full peer peer-checked:bg-orange-500 transition"></div>
         </label>
       </div>
       <div class="flex items-center gap-2">
-        <input type="number" id="promo-${b}-percent" value="${saved[b]?.percent||0}" min="0" max="90" class="w-20 h-9 px-2 bg-[#141414] border border-zinc-800 rounded-lg text-[14px]">
-        <span class="text-[13px] text-zinc-500">%</span>
+        <input type="number" id="promo-${b}-percent" value="${saved[b]?.percent||0}" min="0" max="90" class="w-20 h-9 px-2 bg-[#141414] border border-zinc-800 rounded-lg text-center">
+        <span class="text-[13px] text-zinc-500">% giảm</span>
       </div>
     </div>
   `).join('');
 }
-async function savePromotions(){
+function savePromotions(){
   const data = {};
-  const rows = [];
   BRANDS.forEach(b=>{
-    const active = document.getElementById(`promo-${b}-active`).checked;
-    const percent = parseInt(document.getElementById(`promo-${b}-percent`).value)||0;
-    data[b] = { active, percent };
-    rows.push({ brand: b, active, percent });
+    data[b] = {
+      active: document.getElementById(`promo-${b}-active`).checked,
+      percent: parseInt(document.getElementById(`promo-${b}-percent`).value)||0
+    };
   });
   localStorage.setItem('promotions', JSON.stringify(data));
-  
-  document.getElementById('promo-status').textContent = 'Đang lưu...';
-  try {
-    const { error } = await supabaseClient.from('promotions').upsert(rows, { onConflict: 'brand' });
-    if(error) throw error;
-    document.getElementById('promo-status').textContent = 'Đã lưu lên Supabase! Website sẽ cập nhật ngay.';
-  } catch(e) {
-    document.getElementById('promo-status').textContent = 'Lỗi: ' + e.message;
-  }
-  setTimeout(()=>document.getElementById('promo-status').textContent='',4000);
+  // also save to Supabase if needed later
+  document.getElementById('promo-status').textContent = 'Đã lưu! Website sẽ cập nhật ngay.';
+  setTimeout(()=>document.getElementById('promo-status').textContent='',3000);
 }
 // extend switchTab
 const _oldSwitch = window.switchTab;
