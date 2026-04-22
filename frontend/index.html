@@ -1294,9 +1294,11 @@ function showProductModal(id) {
         </div>
                     
                     <div class="mt-auto">
-                        <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}
-                            <span class="text-4xl font-extrabold gradient-text">${(() => { const promo = promotions.find(pr => pr.product_id == product.id && pr.active); if (promo && promo.discount_percent > 0) { const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100); const pct = promo.discount_percent || Math.round((1 - newPrice/product.price)*100); return '<div class="flex items-baseline gap-3 flex-wrap">' + '<span class="text-4xl font-extrabold gradient-text">' + formatPrice(newPrice) + '</span>' + '<span class="text-lg line-through text-gray-500">' + formatPrice(product.price) + '</span>' + '<div class="bg-red-600 text-white text-sm font-bold px-3 py-1 rounded">-' + pct + '% OFF</div>' + '</div>'; } return formatPrice(product.price); })()}
+                        <div class="mb-4">
+                            <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}</span>
+                            <div class="mt-1">
+                                ${(() => { const promo = promotions.find(pr => pr.product_id == product.id && pr.active); if (promo && promo.discount_percent > 0) { const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100); const pct = promo.discount_percent || Math.round((1 - newPrice/product.price)*100); return '<div class="flex items-baseline gap-3 flex-wrap"><span class="text-4xl font-extrabold" style="color:#f97316">' + formatPrice(newPrice) + '</span><span class="text-xl line-through text-gray-500">' + formatPrice(product.price) + '</span><span class="bg-red-600 text-white text-sm font-bold px-3 py-1 rounded">-' + pct + '% OFF</span></div>'; } return '<span class="text-4xl font-extrabold" style="color:#f97316">' + formatPrice(product.price) + '</span>'; })()}
+                            </div>
                         </div>
                         <button onclick="addToCart(${product.id}); closeModal();" class="btn-primary w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cart-plus"></i>
