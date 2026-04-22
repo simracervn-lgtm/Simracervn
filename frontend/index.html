@@ -196,26 +196,20 @@
 function filterBrand(brand){
   document.querySelectorAll('[data-brand-btn]').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-brand-btn="${brand}"]`)?.classList.add('active');
-  renderProducts(brand);
+  if(typeof renderProducts==='function') renderProducts(brand);
 }
 </script>
 <script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};
 function filterBrand(brand){
   document.querySelectorAll('[data-brand-btn]').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-brand-btn="${brand}"]`)?.classList.add('active');
-  renderProducts(brand);
+  if(typeof renderProducts==='function') renderProducts(brand);
 }
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title data-i18n="site.title">SIMRACER VN - Thiết Bị Đua Xe Giả Lập Cao Cấp</title>
-<script src="https://cdn.tailwindcss.com">
-function filterBrand(brand){
-  document.querySelectorAll('[data-brand-btn]').forEach(b=>b.classList.remove('active'));
-  document.querySelector(`[data-brand-btn="${brand}"]`)?.classList.add('active');
-  renderProducts(brand);
-}
-</script>
+<script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Orbitron:wght@700;800;900&display=swap');
@@ -605,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => switchLang(localStorage.getI
 function filterBrand(brand){
   document.querySelectorAll('[data-brand-btn]').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-brand-btn="${brand}"]`)?.classList.add('active');
-  renderProducts(brand);
+  if(typeof renderProducts==='function') renderProducts(brand);
 }
 </script>
 
@@ -1083,7 +1077,7 @@ async function loadProducts(retry=0){
     if(error) throw error;
     products = data || [];
     console.log('Loaded products:', products.length);
-    if(products.length===0 && retry<2) throw new Error('empty');
+    // if(products.length===0 && retry<2) throw new Error('empty'); // cho phép hiển thị rỗng để debug
   }catch(e){
     console.warn('Load products failed, retry', retry+1, e);
     if(retry < 3){
@@ -1091,7 +1085,7 @@ async function loadProducts(retry=0){
       return;
     }
     products=[];
-    const grid = document.getElementById('products-grid');
+    const grid = document.getElementById('product-grid');
     if(grid) grid.innerHTML = `<div class="col-span-full text-center py-12"><p class="text-gray-400 mb-4">Không tải được sản phẩm. Tắt AdBlock và tải lại.</p><button onclick="location.reload()" class="px-4 py-2 bg-orange-500 rounded-lg">Tải lại</button></div>`;
     return;
   }
@@ -1452,7 +1446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function filterBrand(brand){
   document.querySelectorAll('[data-brand-btn]').forEach(b=>b.classList.remove('active'));
   document.querySelector(`[data-brand-btn="${brand}"]`)?.classList.add('active');
-  renderProducts(brand);
+  if(typeof renderProducts==='function') renderProducts(brand);
 }
 </script>
 
