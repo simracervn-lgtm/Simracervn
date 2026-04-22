@@ -688,6 +688,65 @@ section, header, footer, main {
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+
+
+<script>
+const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// === KHUYẾN MÃI ĐỘNG TỪ SUPABASE ===
+let PROMO = {
+  'VNM': 0,
+  'MOZA': 0,
+  'Simagic': 0,
+  'Fanatec': 0,
+  'Conspit': 0
+};
+
+async function loadPromotions(){
+  try {
+    const { data, error } = await supabase.from('promotions').select('*');
+    if(error) throw error;
+    // reset
+    Object.keys(PROMO).forEach(k=>PROMO[k]=0);
+    (data||[]).forEach(p=>{
+      if(p.active && p.percent>0){
+        PROMO[p.brand] = p.percent;
+      }
+    });
+    // update banner
+    const active = Object.entries(PROMO).filter(([k,v])=>v>0).map(([k,v])=>`${k} -${v}%`);
+    const banner = document.getElementById('promo-banner');
+    if(banner){
+      if(active.length){
+        banner.textContent = '🔥 KHUYẾN MÃI: ' + active.join(' • ');
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+    // re-render products if already loaded
+    if(typeof renderProducts === 'function' && window.products){
+      renderProducts('all');
+    }
+  } catch(e){
+    console.error('Load promo failed', e);
+  }
+}
+
+function promoPrice(p){
+  const pct = PROMO[p.brand] || 0;
+  return pct>0 ? Math.round(p.price * (100-pct)/100) : p.price;
+}
+function promoPct(p){ return PROMO[p.brand] || 0; }
+
+// tự động load khi trang ready
+document.addEventListener('DOMContentLoaded', ()=>{ setTimeout(loadPromotions, 500); });
+</script>
+
 </head>
 <body>
 <!-- Hidden brand logos for JS reference -->
@@ -1099,6 +1158,8 @@ async function loadProducts(retry=0){
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
+// Update cart prices to promo on load
+setTimeout(()=>{ if(window.products){ cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: promoPrice(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); updateCart(); } }, 500);
 let currentFilter = 'all';
 
 function formatPrice(price) {
@@ -1133,7 +1194,7 @@ function renderProducts(filter = 'all') {
             </div>
             <div class="p-5">
                 <h3 class="font-bold text-lg mb-2 line-clamp-2 min-h-[56px]">${product.name}</h3>
-                <p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(product.price)}</p>
+                ${promoPct(product)>0 ? `<div class="mb-4"><div class="flex items-baseline gap-2"><span class="text-2xl font-extrabold gradient-text">${formatPrice(promoPrice(product))}</span><span class="text-sm text-zinc-500 line-through">${formatPrice(product.price)}</span><span class="text-[11px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">-${promoPct(product)}%</span></div></div>` : `<p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(product.price)}</p>`}
                 <div class="flex gap-2">
                     <button onclick="showProductModal(${product.id})" class="flex-1 btn-primary py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                         <i class="fa-solid fa-eye"></i>
@@ -1243,7 +1304,7 @@ function showProductModal(id) {
                     <div class="mt-auto">
                         <div class="flex items-baseline gap-2 mb-4">
                             <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}
-                            <span class="text-4xl font-extrabold gradient-text">${formatPrice(product.price)}
+                            <span class="text-4xl font-extrabold gradient-text">${formatPrice(promoPrice(product))}
                         </div>
                         <button onclick="addToCart(${product.id}); closeModal();" class="btn-primary w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cart-plus"></i>
@@ -1276,7 +1337,7 @@ function addToCart(id) {
     if (existing) {
         existing.quantity += 1;
     } else {
-        cart.push({...product, quantity: 1});
+        cart.push({...product, price: promoPrice(product), originalPrice: product.price, quantity: 1});
     }
     
     saveCart();
