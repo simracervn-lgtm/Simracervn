@@ -688,61 +688,6 @@ section, header, footer, main {
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-function getPromotions(){ try{ return JSON.parse(localStorage.getItem('promotions')||'{}'); }catch(e){return{}} }
-function getDiscountedPrice(product){
-  const promos = getPromotions();
-  const brand = (product.brand||'').toLowerCase();
-  const key = Object.keys(promos).find(k=>k.toLowerCase()===brand);
-  const p = key? promos[key]: null;
-  if(p && p.active && p.percent>0){ return Math.round(product.price * (100-p.percent)/100); }
-  return product.price;
-}
-function getPromoPercent(product){
-  const promos = getPromotions();
-  const brand = (product.brand||'').toLowerCase();
-  const key = Object.keys(promos).find(k=>k.toLowerCase()===brand);
-  const p = key? promos[key]: null;
-  return (p && p.active)? p.percent:0;
-}
-</script>
-
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL = 'https://ekpisffpcovzuamplugm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_PTSKskpcthxWGr5Oo-Cyow_FbBhv-yZ';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let PROMO_MAP = {};
-async function loadPromotions(){
-  const { data } = await supabase.from('promotions').select('*');
-  PROMO_MAP = {};
-  (data||[]).forEach(p=>{ PROMO_MAP[p.brand] = {percent:p.percent, active:p.active}; });
-  // update banner
-  const active = Object.entries(PROMO_MAP).filter(([k,v])=>v.active && v.percent>0).map(([k,v])=>`${k} -${v.percent}%`);
-  const b = document.getElementById('promo-banner');
-  if(b && active.length){ b.textContent = '🔥 KHUYẾN MÃI: ' + active.join(' • '); b.style.display='block'; }
-}
-function getDiscounted(product){
-  const p = PROMO_MAP[product.brand];
-  return (p && p.active && p.percent>0) ? Math.round(product.price * (100-p.percent)/100) : product.price;
-}
-function getPercent(product){
-  const p = PROMO_MAP[product.brand];
-  return (p && p.active) ? p.percent : 0;
-}
-function renderPriceHTML(product){
-  const pct = getPercent(product);
-  if(pct>0){
-    return `<div class="mb-4"><div class="flex items-baseline gap-2"><span class="text-2xl font-extrabold gradient-text">${formatPrice(getDiscounted(product))}</span><span class="text-sm text-zinc-500 line-through">${formatPrice(product.price)}</span><span class="text-[11px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">-${pct}%</span></div></div>`;
-  }
-  return `${renderPriceHTML(product)}`;
-}
-document.addEventListener('DOMContentLoaded', loadPromotions);
-</script>
-
 </head>
 <body>
 <!-- Hidden brand logos for JS reference -->
@@ -1154,7 +1099,6 @@ async function loadProducts(retry=0){
 }
 
 let cart = JSON.parse(localStorage.getItem('simracer_cart') || '[]');
-setTimeout(async ()=>{ await loadPromotions(); if(window.products && products.length){ cart = cart.map(it=>{ const p=products.find(x=>x.id===it.id); return p? {...it, price: getDiscounted(p), originalPrice:p.price}:it; }); localStorage.setItem('simracer_cart', JSON.stringify(cart)); if(typeof updateCart==='function') updateCart(); } }, 1000);
 let currentFilter = 'all';
 
 function formatPrice(price) {
@@ -1189,14 +1133,7 @@ function renderProducts(filter = 'all') {
             </div>
             <div class="p-5">
                 <h3 class="font-bold text-lg mb-2 line-clamp-2 min-h-[56px]">${product.name}</h3>
-                ${(() => {
-      const pct = getPromoPercent(product);
-      if(pct>0){
-        const newP = getDiscountedPrice(product);
-        return `<div class="mb-4"><div class="flex items-baseline gap-2"><span class="text-2xl font-extrabold gradient-text">${formatPrice(newP)}</span><span class="text-sm text-zinc-500 line-through">${formatPrice(getDiscountedPrice(product))}</span><span class="text-[11px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">-${pct}%</span></div></div>`;
-      }
-      return `<p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(getDiscountedPrice(product))}</p>`;
-    })()}
+                <p class="text-2xl font-extrabold gradient-text mb-4">${formatPrice(product.price)}</p>
                 <div class="flex gap-2">
                     <button onclick="showProductModal(${product.id})" class="flex-1 btn-primary py-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
                         <i class="fa-solid fa-eye"></i>
@@ -1306,7 +1243,7 @@ function showProductModal(id) {
                     <div class="mt-auto">
                         <div class="flex items-baseline gap-2 mb-4">
                             <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}
-                            <span class="text-4xl font-extrabold gradient-text">${formatPrice(getDiscountedPrice(product))}
+                            <span class="text-4xl font-extrabold gradient-text">${formatPrice(product.price)}
                         </div>
                         <button onclick="addToCart(${product.id}); closeModal();" class="btn-primary w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cart-plus"></i>
@@ -1339,7 +1276,7 @@ function addToCart(id) {
     if (existing) {
         existing.quantity += 1;
     } else {
-        const disc = getDiscounted(product); cart.push({...product, price: disc, originalPrice: product.price, quantity: 1});
+        cart.push({...product, quantity: 1});
     }
     
     saveCart();
