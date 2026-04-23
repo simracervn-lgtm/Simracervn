@@ -1267,28 +1267,29 @@ function showProductModal(id) {
                 <div class="flex flex-col">
                     <div class="flex items-center gap-3 mb-4">
                         <img src="${getBrandLogo(product.brand)}" alt="${product.brand}" class="h-8 w-auto">
-                        <span class="product-badge px-3 py-1 rounded-full text-sm font-semibold">${product.brand}
+                        <span class="product-badge px-3 py-1 rounded-full text-sm font-semibold">${product.brand}</span>
                     </div>
                     
                     <h2 class="text-3xl font-extrabold mb-4">${product.name}</h2>
                     <p class="text-gray-400 mb-6">${(localStorage.getItem("lang")||"vi")==="en" ? (product.desc_en||product.desc_vi||"") : (product.desc_vi||product.desc_en||"")}</p>
                     
                     <div class="card-hover p-4 rounded-xl mb-6">
-                        <div class="text-sm text-gray-500 mb-2"><div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-4">
             <div class="border border-gray-700 rounded-lg p-4">
                 <div class="text-sm text-gray-400">${(localStorage.getItem("lang")||"vi")==="en" ? "Compatibility" : "Tương thích"}</div>
-                <div class="font-semibold">${product.compatibility}</div>
+                <div class="font-semibold">${product.compatibility || "PC"}</div>
             </div>
             <div class="border border-gray-700 rounded-lg p-4">
                 <div class="text-sm text-gray-400">${(localStorage.getItem("lang")||"vi")==="en" ? "Warranty" : "Bảo hành"}</div>
                 <div class="font-semibold">${product.warranty || "Liên hệ"}</div>
             </div>
         </div>
+                    </div>
                     
                     <div class="mt-auto">
-                        <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-sm text-gray-500">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}
-                            <span class="text-4xl font-extrabold gradient-text">${(() => { const promo = promotions.find(pr => pr.product_id == product.id && pr.active); if (promo && promo.discount_percent > 0) { const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100); const pct = promo.discount_percent || Math.round((1 - newPrice/product.price)*100); return '<div class="flex items-baseline gap-3 flex-wrap">' + '<span class="text-4xl font-extrabold gradient-text">' + formatPrice(newPrice) + '</span>' + '<span class="text-lg line-through text-gray-500">' + formatPrice(product.price) + '</span>' + '<div class="bg-red-600 text-white text-sm font-bold px-3 py-1 rounded">-' + pct + '% OFF</div>' + '</div>'; } return formatPrice(product.price); })()}
+                        <div class="mb-4">
+                            <div class="text-sm text-gray-500 mb-1">${(localStorage.getItem("lang")||"vi")==="en" ? "Price:" : "Giá:"}</div>
+                            ${(() => { const promo = promotions.find(pr => pr.product_id == product.id && pr.active); if (promo && promo.discount_percent > 0) { const newPrice = Math.round(product.price * (100 - promo.discount_percent) / 100); const pct = promo.discount_percent; return `<div class="flex items-baseline gap-3 flex-wrap"><span class="text-4xl font-extrabold gradient-text">${formatPrice(newPrice)}</span><span class="text-lg line-through text-gray-500">${formatPrice(product.price)}</span><span class="bg-red-600 text-white text-sm font-bold px-3 py-1 rounded">-${pct}%</span></div>`; } return `<span class="text-4xl font-extrabold gradient-text">${formatPrice(product.price)}</span>`; })()}
                         </div>
                         <button onclick="addToCart(${product.id}); closeModal();" class="btn-primary w-full py-4 rounded-xl text-lg font-semibold flex items-center justify-center gap-2">
                             <i class="fa-solid fa-cart-plus"></i>
