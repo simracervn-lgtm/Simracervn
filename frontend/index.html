@@ -2043,6 +2043,43 @@ section, header, footer, main {
     }
   ]
 }</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Store",
+  "name": "SimRacerVN",
+  "image": "https://simracervn.com/logo.png",
+  "url": "https://simracervn.com",
+  "telephone": "+84345667657",
+  "email": "simracervn@gmail.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "31/29 Đồng Xoài",
+    "addressLocality": "Tân Bình",
+    "addressRegion": "Hồ Chí Minh",
+    "postalCode": "700000",
+    "addressCountry": "VN"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 10.8003716,
+    "longitude": 106.6453937
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "09:00",
+    "closes": "21:00"
+  },
+  "priceRange": "$$",
+  "sameAs": [
+    "https://www.facebook.com/simracervn",
+    "https://www.google.com/maps/place/SIMRACER+VN/@10.8003716,106.6453937,1111m"
+  ]
+}
+</script>
+
 </head>
 <body>
 <!-- Hidden brand logos for JS reference -->
@@ -2064,12 +2101,12 @@ section, header, footer, main {
             </div>
             
             <div class="hidden lg:flex items-center gap-8">
-                <a href="/vnm-simulation.html" class="nav-link hover:text-orange-500 transition" data-i18n="nav.home">Trang Chủ</a>
-                <a href="/vnm-simulation.html" class="nav-link hover:text-orange-500 transition" data-i18n="nav.products">Sản Phẩm</a>
-                <a href="/vnm-simulation.html" class="nav-link hover:text-orange-500 transition" data-i18n="nav.brands">Thương Hiệu</a>
-                <a href="/vnm-simulation.html" class="nav-link hover:text-orange-500 transition" data-i18n="nav.videos">Video Review</a>
-                <a href="/vnm-simulation.html" class="nav-link hover:text-orange-500 transition" data-i18n="nav.specs">Thông Số</a>
-            <a href="/vnm-simulation.html" class="nav-link text-gray-300 hover:text-white transition" data-i18n="nav.warranty">Chính Sách Bảo Hành</a>
+                <a  class="nav-link hover:text-orange-500 transition" href="#home" data-i18n="nav.home">Trang Chủ</a>
+                <a  class="nav-link hover:text-orange-500 transition" href="#products" data-i18n="nav.products">Sản Phẩm</a>
+                <a  class="nav-link hover:text-orange-500 transition" href="#brands" data-i18n="nav.brands">Thương Hiệu</a>
+                <a  class="nav-link hover:text-orange-500 transition" href="#videos" data-i18n="nav.videos">Video Review</a>
+                <a  class="nav-link hover:text-orange-500 transition" href="#specs" data-i18n="nav.specs">Thông Số</a>
+            <a  class="nav-link text-gray-300 hover:text-white transition" href="#" onclick="openPolicy('warranty');return false;" data-i18n="nav.warranty">Chính Sách Bảo Hành</a>
                     </div>
         <div class="lang-switcher">
           <button class="lang-btn" data-lang="vi" onclick="switchLang('vi')">VI</button>
@@ -2089,12 +2126,12 @@ section, header, footer, main {
 
         <!-- Mobile Menu -->
         <div id="mobile-menu" class="lg:hidden hidden mt-4 pb-4 space-y-3">
-            <a href="/vnm-simulation.html" class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" data-i18n="nav.home">Trang Chủ</a>
-            <a href="/vnm-simulation.html" class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" data-i18n="nav.products">Sản Phẩm</a>
-            <a href="/vnm-simulation.html" class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" data-i18n="nav.brands">Thương Hiệu</a>
-            <a href="/vnm-simulation.html" class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" data-i18n="nav.videos">Video Review</a>
-            <a href="/vnm-simulation.html" class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" data-i18n="nav.specs">Thông Số</a>
-                        <a href="/vnm-simulation.html" class="block text-gray-300 hover:text-white transition" data-i18n="nav.warranty">Chính Sách Bảo Hành</a>
+            <a  class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" href="#home" data-i18n="nav.home">Trang Chủ</a>
+            <a  class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" href="#products" data-i18n="nav.products">Sản Phẩm</a>
+            <a  class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" href="#brands" data-i18n="nav.brands">Thương Hiệu</a>
+            <a  class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" href="#videos" data-i18n="nav.videos">Video Review</a>
+            <a  class="block py-2 px-4 hover:bg-white/5 rounded-lg transition" href="#specs" data-i18n="nav.specs">Thông Số</a>
+                        <a  class="block text-gray-300 hover:text-white transition" href="#" onclick="openPolicy('warranty');return false;" data-i18n="nav.warranty">Chính Sách Bảo Hành</a>
 </div>
     </nav>
 </header>
@@ -2125,9 +2162,9 @@ section, header, footer, main {
             <p class="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto" data-i18n="hero.desc.supply">Cung cấp thiết bị Sim Racing cao cấp từ các thương hiệu hàng đầu thế giới: VNM, MOZA, SIMAGIC, CONSPIT, FANATEC</p>
 
             <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <a href="/vnm-simulation.html" class="btn-primary px-8 py-4 rounded-xl text-lg inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+                <a href="/vnm-simulation/" class="btn-primary px-8 py-4 rounded-xl text-lg inline-flex items-center gap-2 w-full sm:w-auto justify-center">
                     <i class="fa-solid fa-cart-shopping"></i><span data-i18n="hero.btn.explore">Khám Phá Sản Phẩm</span></a>
-                <a href="/vnm-simulation.html" target="_blank" class="facebook-btn px-8 py-4 rounded-xl text-lg inline-flex items-center gap-2 w-full sm:w-auto justify-center">
+                <a href="/vnm-simulation/" target="_blank" class="facebook-btn px-8 py-4 rounded-xl text-lg inline-flex items-center gap-2 w-full sm:w-auto justify-center">
                     <i class="fa-solid fa-comments"></i><span data-i18n="hero.btn.facebook">Tư Vấn Trực Tiếp</span></a>
             </div>
 
@@ -2328,7 +2365,7 @@ section, header, footer, main {
                 <p class="text-gray-400 mb-4" data-i18n="footer.brand.desc">Simracervn cung cấp thiết bị đua xe giả lập cao cấp tại Việt Nam. Cam kết hàng chính hãng, hổ trợ tốt nhất cho khách hàng.</p>
                 
                 <div class="flex gap-3 mt-4 flex-wrap">
-                    <a href="/vnm-simulation.html" target="_blank" rel="noopener" class="w-10 h-10 rounded-lg bg-white/5 hover:bg-blue-600 flex items-center justify-center transition-all hover:scale-110" aria-label="Facebook">
+                    <a href="/vnm-simulation/" target="_blank" rel="noopener" class="w-10 h-10 rounded-lg bg-white/5 hover:bg-blue-600 flex items-center justify-center transition-all hover:scale-110" aria-label="Facebook">
                         <i class="fab fa-facebook-f"></i>
                     </a>
                     <a href="https://www.youtube.com/@SimracerVN" target="_blank" rel="noopener" class="w-10 h-10 rounded-lg bg-white/5 hover:bg-red-600 flex items-center justify-center transition-all hover:scale-110" aria-label="YouTube">
