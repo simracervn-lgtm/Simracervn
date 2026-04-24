@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Block admin and cart
+Disallow: /admin/
+Disallow: /checkout
+Disallow: /cart
+
+Sitemap: https://simracervn.com/sitemap.xml
